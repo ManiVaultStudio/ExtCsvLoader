@@ -78,14 +78,33 @@ namespace ExtCsvLoader
 	template <typename T>
 	T* CSVReader::get_data(bool transposed)
 	{
-		T* data = new T[m_nrOfRows * m_nrOfColumns];
+	
 		std::ptrdiff_t nrOfLines = static_cast<std::ptrdiff_t>(m_nrOfRows);
 
 
-		std::size_t nrOfBufferItems = m_with_row_header ? m_nrOfColumns - 1 : m_nrOfColumns;
+		std::size_t nrOfBufferItems = m_with_row_header ? m_nrOfColumns + 1 : m_nrOfColumns;
+		T* data = nullptr;
 		#pragma  omp parallel for schedule(dynamic,1)
 		for (long long i = 0; i < nrOfLines; ++i)
 		{
+			ExtCsvLoader::CsvBuffer csvbuffer(m_data[i], m_separator, nrOfBufferItems);
+			if(i==0)
+			{
+				if (m_with_row_header && m_with_column_header)
+				{
+					if (csvbuffer.size() == (nrOfBufferItems+1))
+					{
+						// header was lacking a row+column header item
+						m_column_header.insert(m_column_header.begin(), m_column_row_header);
+						m_nrOfColumns += 1;
+						m_column_row_header = "";
+						nrOfBufferItems += 1;
+					}
+				}
+				// wait with data allocation until we are sure about the number of columns.
+				data = new T[m_nrOfRows * m_nrOfColumns];
+			}
+
 			std::vector<T> transposebuffer(m_nrOfColumns);
 			T* row = data + (i * m_nrOfColumns);
 			if (transposed)
@@ -93,7 +112,6 @@ namespace ExtCsvLoader
 				row = &(transposebuffer[0]);
 			}
 
-			ExtCsvLoader::CsvBuffer csvbuffer(m_data[i], m_separator, nrOfBufferItems);
 			if (!m_with_row_header)
 			{
 				for (std::size_t j = 0; j < m_nrOfColumns; ++j)

@@ -104,7 +104,7 @@ namespace Keys
 void CsvLoader::init()
 {
     QStringList fileTypeOptions;
-    fileTypeOptions.append("CSV (*.csv)");
+    fileTypeOptions.append("CSV (*.csv *.txt)");
     fileTypeOptions.append("TSV (*.tsv)");
     _fileDialog.setOption(QFileDialog::DontUseNativeDialog);
     _fileDialog.setFileMode(QFileDialog::ExistingFile);
@@ -325,6 +325,8 @@ void CsvLoader::loadData()
                 std::vector<QString> sampleNames = toQStringVector(reader.GetRowHeader());
                 pointsDataset->setProperty("Sample Names", QList<QVariant>(sampleNames.cbegin(), sampleNames.cend()));
             }
+
+            events().notifyDatasetChanged(pointsDataset);
         }
         else  
         {
