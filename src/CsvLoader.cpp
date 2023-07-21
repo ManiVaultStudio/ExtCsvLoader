@@ -326,7 +326,14 @@ void CsvLoader::loadData()
                 pointsDataset->setProperty("Sample Names", QList<QVariant>(sampleNames.cbegin(), sampleNames.cend()));
             }
 
+
+            // Notify others that the clusters have changed
+#if defined(MANIVAULT_API_Old)
             events().notifyDatasetChanged(pointsDataset);
+#elif defined(MANIVAULT_API_New)
+            events().notifyDatasetDataChanged(pointsDataset);
+#endif
+            
         }
         else  
         {
@@ -631,7 +638,12 @@ void CsvLoader::loadData()
                         if (colorIndex >= 0)
                             processed[colorIndex] = 1; // color has been processed
 
+                            // Notify others that the clusters have changed
+#if defined(MANIVAULT_API_Old)
                         events().notifyDatasetChanged(clusterDataset);
+#elif defined(MANIVAULT_API_New)
+                        events().notifyDatasetDataChanged(clusterDataset);
+#endif
                     }
                 }
             }
@@ -645,7 +657,12 @@ void CsvLoader::loadData()
                     QString name = clusterNames[i].c_str();
                     Dataset<Clusters> clusterDataset = (_mixedDataHierarchyCheckbox->isChecked() && nrOfNumericalItems) ? _core->addDataset("Cluster", name, pointsDataset) : _core->addDataset("Cluster", name);
                     // Notify others that the dataset was added
-                    events().notifyDatasetAdded(clusterDataset);
+                            
+#if defined(MANIVAULT_API_Old)
+                    events().notifyDatasetChanged(clusterDataset);
+#elif defined(MANIVAULT_API_New)
+                    events().notifyDatasetDataChanged(clusterDataset);
+#endif
 
                     
                     for (auto it = cluster_info[i].cbegin(); it != cluster_info[i].cend(); ++it)
@@ -659,7 +676,12 @@ void CsvLoader::loadData()
                     }
                     processed[i] = 1;
                     
+                    // Notify others that the clusters have changed
+#if defined(MANIVAULT_API_Old)
                     events().notifyDatasetChanged(clusterDataset);
+#elif defined(MANIVAULT_API_New)
+                    events().notifyDatasetDataChanged(clusterDataset);
+#endif
 	            }
             }
         }
