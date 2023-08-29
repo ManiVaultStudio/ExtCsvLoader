@@ -54,10 +54,19 @@ target_link_libraries(${PROJECT} PRIVATE Qt6::WebEngineWidgets)
 target_link_libraries(${PROJECT} PRIVATE "${HDPS_LINK_LIBRARY}")
 target_link_libraries(${PROJECT} PRIVATE "${POINTDATA_LINK_LIBRARY}")
 target_link_libraries(${PROJECT} PRIVATE "${CLUSTERDATA_LINK_LIBRARY}")
-if(APPLE)
-    MESSAGE( STATUS "Linking PREBUILT OpenMP libraries...")
-    target_link_libraries(${PROJECT} PRIVATE "/usr/local/lib/libomp.dylib")
+find_package(OpenMP REQUIRED)
+if(OpenMP_FOUND)
+    message(STATUS "OpenMP found")
+    target_link_libraries(${PROJECT} PRIVATE OpenMP::OpenMP_CXX)
+    target_compile_options(${PROJECT} PRIVATE ${OpenMP_CXX_FLAGS})
+else()
+    message(WARNING "OpenMP not found!")
 endif()
+
+# if(APPLE)
+#    MESSAGE( STATUS "Linking PREBUILT OpenMP libraries...")
+#    target_link_libraries(${PROJECT} PRIVATE "/usr/local/lib/libomp.dylib")
+# endif()
 
 install(TARGETS ${PROJECT}
     RUNTIME DESTINATION Plugins COMPONENT PLUGINS # Windows .dll
