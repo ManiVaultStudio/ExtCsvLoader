@@ -401,7 +401,7 @@ void CsvLoader::loadData()
                 }
             }
 
-            const std::size_t nrOfNumericalItems = std::count(detectedDataType.cbegin(), detectedDataType.cend(), DT_NUMERICAL);
+            const std::ptrdiff_t nrOfNumericalItems = std::count(detectedDataType.cbegin(), detectedDataType.cend(), DT_NUMERICAL);
 
             Dataset<Points> pointsDataset;
             if(nrOfNumericalItems)
@@ -424,7 +424,7 @@ void CsvLoader::loadData()
                         if ((detectedDataType[i] == DT_NUMERICAL))
                         {
 							#pragma omp parallel for schedule(dynamic,1)
-                            for (std::size_t s = 0; s < size; ++s)
+                            for (std::ptrdiff_t s = 0; s < size; ++s)
                             {
                                 std::string value = data_ptr[(s * items) + i];
                                 if (value.empty())
@@ -454,7 +454,7 @@ void CsvLoader::loadData()
                         if ((detectedDataType[i] == DT_NUMERICAL))
                         {
 							#pragma omp parallel for schedule(dynamic,1)
-                            for (std::size_t s = 0; s < size; ++s)
+                            for (std::ptrdiff_t s = 0; s < size; ++s)
                             {
                                 std::string value = data_ptr[(s * items) + i];
                                 temp[(nrOfNumericalItems * s) + numericalIndex] = std::stof(value);
