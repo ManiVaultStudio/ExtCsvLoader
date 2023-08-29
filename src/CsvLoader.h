@@ -3,6 +3,9 @@
 #include <LoaderPlugin.h>
 
 #include <QFileDialog>
+#include <QLineEdit>
+#include <QCheckBox>
+#include <QComboBox>
 
 using namespace hdps::plugin;
 

@@ -418,7 +418,7 @@ void CsvLoader::loadData()
                     pointsDataset->setDataElementType<float>();
 
                     std::vector<float> temp(nrOfNumericalItems* size);
-                    std::size_t numericalIndex = 0;
+                    std::ptrdiff_t numericalIndex = 0;
                     for (std::ptrdiff_t i = 0; i < items; ++i)
                     {
                         if ((detectedDataType[i] == DT_NUMERICAL))
@@ -446,7 +446,7 @@ void CsvLoader::loadData()
                 {
                     pointsDataset->setDataElementType<biovault::bfloat16_t>();
                     std::vector<biovault::bfloat16_t> temp(nrOfNumericalItems* size);
-                    std::size_t numericalIndex = 0;
+                    std::ptrdiff_t numericalIndex = 0;
 
                    
                     for (std::ptrdiff_t i = 0; i < items; ++i)
