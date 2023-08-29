@@ -56,8 +56,7 @@ target_link_libraries(${PROJECT} PRIVATE "${POINTDATA_LINK_LIBRARY}")
 target_link_libraries(${PROJECT} PRIVATE "${CLUSTERDATA_LINK_LIBRARY}")
 if(APPLE)
     MESSAGE( STATUS "Linking PREBUILT OpenMP libraries...")
-    target_link_libraries(${PROJECT} debug "/usr/local/lib/libomp.dylib")
-    target_link_libraries(${PROJECT} optimized "/usr/local/lib/libomp.dylib")        
+    target_link_libraries(${PROJECT} PRIVATE "/usr/local/lib/libomp.dylib")
 endif()
 
 install(TARGETS ${PROJECT}
