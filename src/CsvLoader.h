@@ -7,7 +7,7 @@
 #include <QCheckBox>
 #include <QComboBox>
 
-using namespace hdps::plugin;
+using namespace mv::plugin;
 
 // =============================================================================
 // View
@@ -44,7 +44,7 @@ public:
 
 class CsvLoaderFactory : public LoaderPluginFactory
 {
-    Q_INTERFACES(hdps::plugin::LoaderPluginFactory hdps::plugin::PluginFactory)
+    Q_INTERFACES(mv::plugin::LoaderPluginFactory mv::plugin::PluginFactory)
     Q_OBJECT
     Q_PLUGIN_METADATA(IID   "nl.tudelft.ExtCsvLoader"
                       FILE  "CsvLoader.json")
@@ -70,5 +70,5 @@ public:
      * Get the data types that the plugin supports
      * @return Supported data types
      */
-    hdps::DataTypes supportedDataTypes() const override;
+    mv::DataTypes supportedDataTypes() const override;
 };

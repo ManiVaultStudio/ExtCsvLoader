@@ -14,8 +14,8 @@ Q_PLUGIN_METADATA(IID "nl.tudelft.ExtCsvLoader")
 // Loader
 // =============================================================================
 
-using namespace hdps;
-using namespace hdps::gui;
+using namespace mv;
+using namespace mv::gui;
 
 namespace 
 {
@@ -38,12 +38,12 @@ namespace
     }
 
   
-    Dataset<Points> createPointsDataset(hdps::CoreInterface* core, bool ask, QString suggestion)
+    Dataset<Points> createPointsDataset(mv::CoreInterface* core, bool ask, QString suggestion)
     {
         QString dataSetName = suggestion;
 
         
-        hdps::Dataset<Points> newDataset = core->addDataset("Points", dataSetName);
+        mv::Dataset<Points> newDataset = core->addDataset("Points", dataSetName);
         events().notifyDatasetAdded(newDataset);
 
         return newDataset;
@@ -703,9 +703,9 @@ LoaderPlugin* CsvLoaderFactory::produce()
     return new CsvLoader(this);
 }
 
-hdps::DataTypes CsvLoaderFactory::supportedDataTypes() const
+mv::DataTypes CsvLoaderFactory::supportedDataTypes() const
 {
-    hdps::DataTypes supportedTypes;
+    mv::DataTypes supportedTypes;
     supportedTypes.append(PointType);
     return supportedTypes;
 }
