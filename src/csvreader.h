@@ -83,32 +83,35 @@ namespace ExtCsvLoader
 
 
 		std::size_t nrOfBufferItems = m_with_row_header ? m_nrOfColumns + 1 : m_nrOfColumns;
-		T* data = nullptr;
+		std::string tempdata = m_data[0];// CsvBuffer will alter the original data so we need to copy it here to make the omp-loop below easier.
+
+		ExtCsvLoader::CsvBuffer csvbuffer(tempdata, m_separator, nrOfBufferItems); 
+		if (m_with_row_header && m_with_column_header)
+		{
+			if (csvbuffer.size() == (nrOfBufferItems + 1))
+			{
+				// header was lacking a row+column header item
+				m_column_header.insert(m_column_header.begin(), m_column_row_header);
+				m_nrOfColumns += 1;
+				m_column_row_header = "";
+				nrOfBufferItems += 1;
+			}
+		}
+		// wait with data allocation until we are sure about the number of columns.
+		T *data = new T[m_nrOfRows * m_nrOfColumns];
+		 
+
 		#pragma  omp parallel for schedule(dynamic,1)
 		for (long long i = 0; i < nrOfLines; ++i)
 		{
+			
 			ExtCsvLoader::CsvBuffer csvbuffer(m_data[i], m_separator, nrOfBufferItems);
-			if(i==0)
-			{
-				if (m_with_row_header && m_with_column_header)
-				{
-					if (csvbuffer.size() == (nrOfBufferItems+1))
-					{
-						// header was lacking a row+column header item
-						m_column_header.insert(m_column_header.begin(), m_column_row_header);
-						m_nrOfColumns += 1;
-						m_column_row_header = "";
-						nrOfBufferItems += 1;
-					}
-				}
-				// wait with data allocation until we are sure about the number of columns.
-				data = new T[m_nrOfRows * m_nrOfColumns];
-			}
 
-			std::vector<T> transposebuffer(m_nrOfColumns);
+			std::vector<T> transposebuffer;
 			T* row = data + (i * m_nrOfColumns);
 			if (transposed)
 			{
+				transposebuffer.resize(m_nrOfColumns);
 				row = &(transposebuffer[0]);
 			}
 

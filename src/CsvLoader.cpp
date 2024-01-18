@@ -42,8 +42,8 @@ namespace
     {
         QString dataSetName = suggestion;
 
-        
-        mv::Dataset<Points> newDataset = core->addDataset("Points", dataSetName);
+       
+        mv::Dataset<Points> newDataset = core->getDataManager().createDataset("Points", dataSetName);
         events().notifyDatasetAdded(newDataset);
 
         return newDataset;
@@ -601,7 +601,7 @@ void CsvLoader::loadData()
                     {
                         QString name = clusterNames[i].c_str();
                         
-                        Dataset<Clusters> clusterDataset = (_mixedDataHierarchyCheckbox->isChecked() && nrOfNumericalItems) ? _core->addDataset("Cluster", name, pointsDataset) : _core->addDataset("Cluster", name);
+                        Dataset<Clusters> clusterDataset = (_mixedDataHierarchyCheckbox->isChecked() && nrOfNumericalItems) ? _core->getDataManager().createDataset("Cluster", name, pointsDataset) : _core->getDataManager().createDataset("Cluster", name);
                         // Notify others that the dataset was added
                         events().notifyDatasetAdded(clusterDataset);
 
@@ -655,7 +655,7 @@ void CsvLoader::loadData()
 	            if(processed[i] == 0)
 	            {
                     QString name = clusterNames[i].c_str();
-                    Dataset<Clusters> clusterDataset = (_mixedDataHierarchyCheckbox->isChecked() && nrOfNumericalItems) ? _core->addDataset("Cluster", name, pointsDataset) : _core->addDataset("Cluster", name);
+                    Dataset<Clusters> clusterDataset = (_mixedDataHierarchyCheckbox->isChecked() && nrOfNumericalItems) ? _core->getDataManager().createDataset("Cluster", name, pointsDataset) : _core->getDataManager().createDataset("Cluster", name);
                     // Notify others that the dataset was added
                             
 #if defined(MANIVAULT_API_Old)
