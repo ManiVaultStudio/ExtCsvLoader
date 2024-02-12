@@ -552,8 +552,11 @@ void CsvLoader::loadData()
 #pragma omp parallel for schedule(dynamic,1)
                             for (std::ptrdiff_t s = 0; s < size; ++s)
                             {
-                                std::string value = data_ptr[(s * items) + i];
-                                temp[(nrOfNumericalItems * s) + numericalIndex] = std::stof(value);
+                                  std::string value = data_ptr[(s * items) + i];
+                                if (value.empty())
+                                    temp[(nrOfNumericalItems * s) + numericalIndex] = 0;
+                                else
+                                    temp[(nrOfNumericalItems * s) + numericalIndex] = std::stof(value);
                             }
 
                             columnHeader[numericalIndex] = sourceColumnHeader[i].c_str();

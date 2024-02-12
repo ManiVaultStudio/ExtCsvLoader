@@ -23,6 +23,34 @@ namespace ExtCsvLoader
 		return _input;
 	}
 
+
+	void create_target_index_vector(const std::vector<std::string>& labels, const std::vector<std::string>& selected_labels, std::vector<std::ptrdiff_t>& result)
+	{
+		std::vector<std::unordered_map<std::string, std::ptrdiff_t>> temp(omp_get_max_threads());
+		std::unordered_map<std::string, std::ptrdiff_t>& dimension_labels_map = temp[0];
+#pragma omp parallel for
+		for (std::ptrdiff_t i = 0; i < selected_labels.size(); ++i)
+		{
+			auto tid = omp_get_thread_num();
+			temp[tid][selected_labels[i]] = i;
+		}
+		for (std::size_t i = 1; i < temp.size(); ++i)
+		{
+			dimension_labels_map.merge(temp[i]);
+		}
+		result.assign(labels.size(), -1);
+		// process all buffer items in parallel
+#pragma  omp parallel for schedule(dynamic,1)
+		for (std::ptrdiff_t i = 0; i < labels.size(); ++i)
+		{
+			auto found = dimension_labels_map.find(labels[i]);
+			if (found != dimension_labels_map.cend())
+			{
+				result[i] = found->second;
+			}
+		}
+	}
+
 	CSVReader::CSVReader(const QString& _filename, const char _separator, bool with_column_header, bool with_row_header)
 	{
 		m_filename = _filename;

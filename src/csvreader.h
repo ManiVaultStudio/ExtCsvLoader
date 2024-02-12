@@ -33,6 +33,8 @@ namespace ExtCsvLoader
 	void initialize_header(std::vector<std::string>& header, const std::string& prefix);
 	std::string searchandreplace(std::string _input, const char _search, const char _replace);
 
+	void create_target_index_vector(const std::vector<std::string>& labels, const std::vector<std::string>& selected_labels, std::vector<std::ptrdiff_t>& result);
+
 	class CSVReader
 	{
 		// everything public for optimal flexibilty
@@ -97,93 +99,40 @@ namespace ExtCsvLoader
 		}
 		else
 		{
-			std::vector<std::unordered_map<std::string, std::ptrdiff_t>> temp(omp_get_max_threads());
-			std::unordered_map<std::string, std::ptrdiff_t>& parent_labels_map = temp[0];
-#pragma omp parallel for
-			for (std::ptrdiff_t i = 0; i < parent_labels.size(); ++i)
-			{
-				auto tid = omp_get_thread_num();
-				temp[tid][parent_labels[i]] = i;
-			}
-			for (std::size_t i = 1; i < temp.size(); ++i)
-			{
-				parent_labels_map.merge(temp[i]);
-			}
-			qDebug() << "parent_label_map created";
 
 			if (transposed && m_with_column_header)
 			{
-				target_column_index.assign(m_nrOfColumns, -1);
-				#pragma  omp parallel for schedule(dynamic,1)
-				for (std::ptrdiff_t i = 0; i < m_nrOfColumns; ++i)
-				{
-					auto found = parent_labels_map.find(m_column_header[i]);
-					if (found != parent_labels_map.cend())
-					{
-						target_column_index[i] = found->second;
-					}
-				}
-
+				create_target_index_vector(m_column_header, parent_labels, target_column_index);
+				
 				column_header = parent_labels;
 				row_header = m_row_header;
 			}
 			else if (!transposed && m_with_row_header)
 			{
-				target_row_index.assign(m_nrOfRows, -1);
-				// process all buffer items in parallel
-				#pragma  omp parallel for schedule(dynamic,1)
-				for (std::ptrdiff_t i = 0; i < m_nrOfRows; ++i)
-				{
-					auto found = parent_labels_map.find(m_row_header[i]);
-					if (found != parent_labels_map.cend())
-					{
-						target_row_index[i] = found->second;
-					}
-				}
+				create_target_index_vector(m_row_header, parent_labels, target_row_index);
 				
 				row_header = parent_labels;
 				column_header = m_column_header;
 			}
-			
+			qDebug() << "parent labels matched";
 		}
-		qDebug() << "parent labels matched";
+		
 
 		if(!dimension_labels.empty())
 		{
 
-			std::vector<std::unordered_map<std::string, std::ptrdiff_t>> temp(omp_get_max_threads());
-			std::unordered_map<std::string, std::ptrdiff_t>& dimension_labels_map = temp[0];
-#pragma omp parallel for
-			for (std::ptrdiff_t i = 0; i < parent_labels.size(); ++i)
-			{
-				auto tid = omp_get_thread_num();
-				temp[tid][dimension_labels[i]] = i;
-			}
-			for (std::size_t i = 1; i < temp.size(); ++i)
-			{
-				dimension_labels_map.merge(temp[i]);
-			}
-			qDebug() << "parent_label_map created";
 
 			if (!transposed && m_with_column_header)
 			{
-				target_column_index.assign(m_nrOfColumns, -1);
-				// process all buffer items in parallel
-				#pragma  omp parallel for schedule(dynamic,1)
-				for (std::ptrdiff_t i = 0; i < m_nrOfColumns; ++i)
-				{
-					auto found = dimension_labels_map.find(m_column_header[i]);
-					if (found != dimension_labels_map.cend())
-					{
-						target_column_index[i] = found->second;
-					}
-				}
+				create_target_index_vector(m_column_header, dimension_labels, target_column_index);
 				
 				column_header = dimension_labels;
 			}
+
+			qDebug() << "dimension labels matched";
 		}
 
-		qDebug() << "dimension labels matched";
+		
 
 		const std::size_t nrOfTargetColumns = column_header.size();
 		const std::size_t nrOfTargetRows = row_header.size();
@@ -200,7 +149,7 @@ namespace ExtCsvLoader
 			auto chunksize = totalSize / omp_get_num_threads();
 			auto begin = data + chunksize * tid;
 			auto end = (tid == omp_get_num_threads() - 1) ? data+totalSize : (begin + chunksize);
-			std::fill(begin, end, 0);
+			std::fill(begin, end, T());
 		}
 
 
