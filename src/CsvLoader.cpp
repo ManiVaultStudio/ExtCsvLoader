@@ -7,6 +7,8 @@
 #include <util/Icon.h>
 #include <QtCore>
 #include "csvreader.h"
+#include <QDialogButtonBox>
+#include <PointData/DimensionsPickerAction.h>
 
 Q_PLUGIN_METADATA(IID "nl.tudelft.ExtCsvLoader")
 
@@ -17,14 +19,28 @@ Q_PLUGIN_METADATA(IID "nl.tudelft.ExtCsvLoader")
 using namespace mv;
 using namespace mv::gui;
 
-namespace 
+namespace
 {
 
-    std::vector<QString> toQStringVector(const std::vector<std::string> &v)
+    std::vector<QString> toQStringVector(const std::vector<std::string>& v)
     {
         std::vector<QString> result(v.size());
         for (std::size_t i = 0; i < v.size(); ++i)
             result[i] = v[i].c_str();
+        return result;
+    }
+    QVariantList toQVariantList(const std::vector<std::string>& v)
+    {
+        QVariantList result(v.size());
+        for (std::size_t i = 0; i < v.size(); ++i)
+            result[i] = QString::fromStdString(v[i]);
+        return result;
+    }
+    std::vector<std::string> toStringVector(const QVariantList& l)
+    {
+        std::vector<std::string> result(l.size());
+        for (std::size_t i = 0; i < l.size(); ++i)
+            result[i] = l[i].toString().toStdString();
         return result;
     }
     // Call the specified function on the specified value, if it is valid.
@@ -37,16 +53,13 @@ namespace
         }
     }
 
-  
-    Dataset<Points> createPointsDataset(mv::CoreInterface* core, bool ask, QString suggestion)
+
+    Dataset<Points> createPointsDataset(QString dataSetName, Dataset<DatasetImpl> parentDataset = Dataset<DatasetImpl>())
     {
-        QString dataSetName = suggestion;
-
-       
-        mv::Dataset<Points> newDataset = core->getDataManager().createDataset("Points", dataSetName);
-        events().notifyDatasetAdded(newDataset);
-
-        return newDataset;
+        if (parentDataset.isValid())
+            return mv::data().createDataset("Points", dataSetName, parentDataset);
+        else
+            return mv::data().createDataset("Points", dataSetName);
     }
 
     void CreateColorVector(std::size_t nrOfColors, std::vector<QColor>& colors)
@@ -82,9 +95,22 @@ namespace
 
 }
 
+
+CsvLoader::CsvLoader(const PluginFactory* factory) : LoaderPlugin(factory)
+, _separatorLineEdit(nullptr)
+, _columnHeaderCheckBox(nullptr)
+, _rowHeaderCheckBox(nullptr)
+, _transposeCheckBox(nullptr)
+, _mixedDataHierarchyCheckbox(nullptr)
+, _sourceTypeComboBox(nullptr)
+, _storageTypeComboBox(nullptr)
+, _datasetPickerAction(this, "Parent Dataset")
+{
+
+}
 CsvLoader::~CsvLoader(void)
 {
-    
+
 }
 
 // Alphabetic list of keys used to access settings from QSettings.
@@ -168,7 +194,7 @@ void CsvLoader::init()
     _sourceTypeComboBox->addItem("Mixed (auto-detect)", 0);
     _sourceTypeComboBox->addItem("Numerical", 1);
     _sourceTypeComboBox->addItem("Categorical", 2);
-   
+
     fileDialogLayout->addWidget(sourceTypeLabel, rowCount, 0);
     fileDialogLayout->addWidget(_sourceTypeComboBox, rowCount++, 1);
 
@@ -200,7 +226,20 @@ void CsvLoader::init()
         }());
 
     fileDialogLayout->addWidget(storageTypeLabel, rowCount, 0);
-    fileDialogLayout->addWidget(_storageTypeComboBox, rowCount, 1);
+    fileDialogLayout->addWidget(_storageTypeComboBox, rowCount++, 1);
+
+
+    // Get unique identifier and gui names from all point data sets in the core
+    auto dataSets = mv::data().getAllDatasets(std::vector<mv::DataType> {PointType});
+
+
+    //dataSets.insert(dataSets.begin(), Dataset<Points>());
+    // Assign found dataset(s)
+    _datasetPickerAction.setDatasets(dataSets);
+
+    fileDialogLayout->addWidget(_datasetPickerAction.createLabelWidget(nullptr), rowCount, 0);
+    fileDialogLayout->addWidget(_datasetPickerAction.createWidget(nullptr), rowCount, 1);
+
 
 
     QFileDialog& fileDialogRef = _fileDialog;
@@ -240,7 +279,7 @@ void CsvLoader::loadData()
     QSettings settings(QString::fromLatin1("HDPS"), QString::fromLatin1("Plugins/ExtCsvLoader"));
 
 
-   
+
 
     if (_fileDialog.exec())
     {
@@ -260,7 +299,7 @@ void CsvLoader::loadData()
         settings.setValue(Keys::columnHeaderValueKey, _columnHeaderCheckBox->isChecked());
         settings.setValue(Keys::rowHeaderValueKey, _rowHeaderCheckBox->isChecked());
 
-    	settings.setValue(Keys::transposeValueKey, _transposeCheckBox->isChecked());
+        settings.setValue(Keys::transposeValueKey, _transposeCheckBox->isChecked());
         settings.setValue(Keys::sourceValueKey, _sourceTypeComboBox->currentIndex());
         settings.setValue(Keys::storageValueKey, _storageTypeComboBox->currentIndex());
         settings.setValue(Keys::fileNameKey, firstFileName);
@@ -273,92 +312,150 @@ void CsvLoader::loadData()
         }
         ExtCsvLoader::CSVReader reader(firstFileName, selected_separator, _columnHeaderCheckBox->isChecked(), _rowHeaderCheckBox->isChecked());
         reader.read();
-       
+
 
         int sourceType = _sourceTypeComboBox->currentData().toInt();
         bool transposed = _transposeCheckBox->isChecked();
 
-        if(sourceType ==1)
+        auto parentDataset = _datasetPickerAction.getCurrentDataset();
+
+        std::vector<std::string> parent_labels;
+
+        if (parentDataset.isValid() && parentDataset->hasProperty("Sample Names"))
+        {
+            QVariantList parentSampleNameList;
+            parentSampleNameList = parentDataset->getProperty("Sample Names").toList();
+            parent_labels = toStringVector(parentSampleNameList);
+        }
+
+        std::vector<std::string> dimension_labels;
+        if(!_transposeCheckBox->isChecked())
+        {
+            auto loadedColumnHeader = reader.GetColumnHeader();
+            std::vector<QString> dimensionNames(loadedColumnHeader.size());
+            for (std::size_t i = 0; i < dimensionNames.size(); ++i)
+            {
+                dimensionNames[i] = loadedColumnHeader[i].c_str();
+            }
+            Dataset<Points> tempDataset = mv::data().createDataset("Points", "temp");
+            tempDataset->getDataHierarchyItem().setVisible(false);
+            tempDataset->setData(std::vector<int8_t>(dimensionNames.size()), dimensionNames.size());
+            tempDataset->setDimensionNames(dimensionNames);
+
+            QDialog dialog(nullptr);
+            QGridLayout* layout = new QGridLayout;
+
+            DimensionsPickerAction& dimensionPickerAction = tempDataset->getDimensionsPickerAction();;
+            layout->addWidget(new QLabel("Select Dimensions:"));
+            layout->addWidget(dimensionPickerAction.createWidget(nullptr));
+            auto* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok);
+            buttonBox->connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+            layout->addWidget(buttonBox, 3, 0, 1, 2);
+            dialog.setLayout(layout);
+            auto result = dialog.exec();
+            if (result != 0)
+            {
+                auto selectedDimensions = dimensionPickerAction.getSelectedDimensions();
+                dimension_labels.reserve(selectedDimensions.size());
+                for(auto dim : selectedDimensions)
+                {
+                    dimension_labels.push_back(loadedColumnHeader[dim]);
+                }
+            }
+        }
+        
+
+
+
+
+        std::vector<std::string> column_header;
+        std::vector<std::string> row_header;
+        if (sourceType == 1)
         {
             int storageType = _storageTypeComboBox->currentData().toInt();
 
-            Dataset<Points> pointsDataset = ::createPointsDataset(_core, true, QFileInfo(firstFileName).baseName());
+            Dataset<Points> pointsDataset;
 
             if (storageType == 1)
             {
-                pointsDataset->setDataElementType<float>();
-                float* data_ptr = reader.get_data<float>(transposed);
-                if (transposed)
+                float* data_ptr = reader.get_data<float>(transposed, column_header, row_header, parent_labels, dimension_labels);
+                if (data_ptr)
                 {
-                    pointsDataset->setData(data_ptr, reader.columns(), reader.rows());
+                    pointsDataset = ::createPointsDataset(QFileInfo(firstFileName).baseName(), parentDataset);;
+                    pointsDataset->setDataElementType<float>();
+                    pointsDataset->setData(data_ptr, row_header.size(), column_header.size());
+                    delete[] data_ptr;
                 }
                 else
                 {
-                    pointsDataset->setData(data_ptr, reader.rows(), reader.columns());
+                    return;
                 }
-                delete[] data_ptr;
+
+
             }
             else if (storageType == 2)
             {
-                pointsDataset->setDataElementType<biovault::bfloat16_t>();
-                biovault::bfloat16_t* data_ptr = reader.get_data< biovault::bfloat16_t>(transposed);
-                if (transposed)
+                biovault::bfloat16_t* data_ptr = reader.get_data< biovault::bfloat16_t>(transposed, column_header, row_header, parent_labels, dimension_labels);
+                if (data_ptr)
                 {
-                    pointsDataset->setData(data_ptr, reader.columns(), reader.rows());
+                    pointsDataset = ::createPointsDataset(QFileInfo(firstFileName).baseName(), parentDataset);;
+                    pointsDataset->setDataElementType<biovault::bfloat16_t>();
+                    pointsDataset->setData(data_ptr, row_header.size(), column_header.size());
+                    delete[] data_ptr;
                 }
                 else
                 {
-                    pointsDataset->setData(data_ptr, reader.rows(), reader.columns());
+                    return;
                 }
-                delete [] data_ptr;
+
             }
 
-            if (transposed)
+            if (pointsDataset.isValid())
             {
-                pointsDataset->setDimensionNames(toQStringVector(reader.GetRowHeader()));
-                std::vector<QString> sampleNames = toQStringVector(reader.GetColumnHeader());
-                pointsDataset->setProperty("Sample Names", QList<QVariant>(sampleNames.cbegin(), sampleNames.cend()));
-            }
-            else
-            {
-                pointsDataset->setDimensionNames(toQStringVector(reader.GetColumnHeader()));
-                std::vector<QString> sampleNames = toQStringVector(reader.GetRowHeader());
-                pointsDataset->setProperty("Sample Names", QList<QVariant>(sampleNames.cbegin(), sampleNames.cend()));
-            }
+                pointsDataset->setDimensionNames(toQStringVector(column_header));
+                pointsDataset->setProperty("Sample Names", toQVariantList(row_header));
 
-
-            // Notify others that the clusters have changed
+                // Notify others that the clusters have changed
 #if defined(MANIVAULT_API_Old)
-            events().notifyDatasetChanged(pointsDataset);
+                events().notifyDatasetChanged(pointsDataset);
 #elif defined(MANIVAULT_API_New)
-            events().notifyDatasetDataChanged(pointsDataset);
+                events().notifyDatasetDataChanged(pointsDataset);
+                events().notifyDatasetDataDimensionsChanged(pointsDataset);
 #endif
-            
-        }
-        else  
-        {
-            std::string* data_ptr = reader.get_data<std::string>(transposed);
-			std::ptrdiff_t items = transposed ? reader.rows() : reader.columns();
-            std::size_t size = transposed ? reader.columns() : reader.rows();
-			std::vector<std::string> clusterNames = transposed ? reader.GetRowHeader() : reader.GetColumnHeader();
+            }
 
-            enum{DT_UNKNOWN, DT_NUMERICAL, DT_CATEGORICAL, DT_COLOR};
+
+        }
+        else
+        {
+            std::string* data_ptr = reader.get_data<std::string>(transposed, column_header, row_header, parent_labels, dimension_labels);
+            if (data_ptr == nullptr)
+            {
+                return;
+            }
+            qDebug() << "get_data finished, " << column_header.size() << " x " << row_header.size() << " values retrieved";
+            std::ptrdiff_t items = column_header.size();
+            std::size_t size = row_header.size();
+            std::vector<std::string> clusterNames = column_header;
+
+            enum { DT_UNKNOWN, DT_NUMERICAL, DT_CATEGORICAL, DT_COLOR };
 
             std::vector<uint8_t> detectedDataType(items, DT_UNKNOWN);
 
             std::vector<std::map<std::string, std::vector<unsigned int>>> cluster_info(items);
             std::vector<std::ptrdiff_t> nrOfColors(items, 0);
-            std::vector<std::ptrdiff_t> hasColor(items);
+            std::vector<std::ptrdiff_t> hasColor(items,-1);
             std::vector<uint8_t> processed(items, 0);
 
-            if(sourceType == 0) // autodetect
+            if (sourceType == 0) // autodetect
             {
-				#pragma omp parallel for schedule(dynamic,1)
+#pragma omp parallel for schedule(dynamic,1)
                 for (std::ptrdiff_t i = 0; i < items; ++i)
                 {
                     bool isNumerical = true;
                     bool isColor = true;
-                    for (std::size_t s = 0; s < size; ++s)
+                    bool continueLoop = true;
+                    for (std::size_t s = 0; continueLoop && (s < size); ++s)
                     {
                         std::string value = data_ptr[(s * items) + i];
 
@@ -368,6 +465,7 @@ void CsvLoader::loadData()
                                 isNumerical &= is_number(value);
                             if (isColor)
                                 isColor &= QColor::isValidColor(value.c_str());
+                            continueLoop = (isNumerical || isColor);
                         }
                     }
                     if (isNumerical)
@@ -380,11 +478,11 @@ void CsvLoader::loadData()
             }
             else // treat everything as categorical or color
             {
-				#pragma omp parallel for schedule(dynamic,1)
+#pragma omp parallel for schedule(dynamic,1)
                 for (std::ptrdiff_t i = 0; i < items; ++i)
                 {
                     bool isColor = true;
-                    for (std::size_t s = 0; s < size; ++s)
+                    for (std::size_t s = 0; isColor && (s < size); ++s)
                     {
                         std::string value = data_ptr[(s * items) + i];
 
@@ -394,7 +492,7 @@ void CsvLoader::loadData()
                                 isColor &= QColor::isValidColor(value.c_str());
                         }
                     }
-					if (isColor)
+                    if (isColor)
                         detectedDataType[i] = DT_COLOR;
                     else
                         detectedDataType[i] = DT_CATEGORICAL;
@@ -404,56 +502,53 @@ void CsvLoader::loadData()
             const std::ptrdiff_t nrOfNumericalItems = std::count(detectedDataType.cbegin(), detectedDataType.cend(), DT_NUMERICAL);
 
             Dataset<Points> pointsDataset;
-            if(nrOfNumericalItems)
+            if (nrOfNumericalItems)
             {
                 int storageType = _storageTypeComboBox->currentData().toInt();
 
-                pointsDataset = ::createPointsDataset(_core, true, QFileInfo(firstFileName).baseName());
+                pointsDataset = ::createPointsDataset(QFileInfo(firstFileName).baseName(), parentDataset);
 
-                std::vector<std::string> sourceColumnHeader = transposed ? reader.GetRowHeader() : reader.GetColumnHeader();
+                std::vector<std::string> sourceColumnHeader = column_header;
                 std::vector<QString> columnHeader(nrOfNumericalItems);
 
                 if (storageType == 1)
                 {
                     pointsDataset->setDataElementType<float>();
 
-                    std::vector<float> temp(nrOfNumericalItems* size);
+                    std::vector<float> temp(nrOfNumericalItems * size);
                     std::ptrdiff_t numericalIndex = 0;
                     for (std::ptrdiff_t i = 0; i < items; ++i)
                     {
                         if ((detectedDataType[i] == DT_NUMERICAL))
                         {
-							#pragma omp parallel for schedule(dynamic,1)
+#pragma omp parallel for schedule(dynamic,1)
                             for (std::ptrdiff_t s = 0; s < size; ++s)
                             {
                                 std::string value = data_ptr[(s * items) + i];
                                 if (value.empty())
                                     temp[(nrOfNumericalItems * s) + numericalIndex] = 0;
                                 else
-									temp[(nrOfNumericalItems * s) + numericalIndex] = std::stof(value);
+                                    temp[(nrOfNumericalItems * s) + numericalIndex] = std::stof(value);
                             }
 
                             columnHeader[numericalIndex] = sourceColumnHeader[i].c_str();
                             ++numericalIndex;
                         }
                     }
-                    if (transposed)
-                        pointsDataset->setData(temp.data(), nrOfNumericalItems, size);
-                    else
-                        pointsDataset->setData(temp.data(), size, nrOfNumericalItems);
+                    pointsDataset->setData(temp.data(), size, nrOfNumericalItems);
                 }
                 else
                 {
                     pointsDataset->setDataElementType<biovault::bfloat16_t>();
-                    std::vector<biovault::bfloat16_t> temp(nrOfNumericalItems* size);
+                    std::vector<biovault::bfloat16_t> temp(nrOfNumericalItems * size);
                     std::ptrdiff_t numericalIndex = 0;
 
-                   
+
                     for (std::ptrdiff_t i = 0; i < items; ++i)
                     {
                         if ((detectedDataType[i] == DT_NUMERICAL))
                         {
-							#pragma omp parallel for schedule(dynamic,1)
+#pragma omp parallel for schedule(dynamic,1)
                             for (std::ptrdiff_t s = 0; s < size; ++s)
                             {
                                 std::string value = data_ptr[(s * items) + i];
@@ -466,40 +561,34 @@ void CsvLoader::loadData()
                             processed[i] = 1;
                         }
                     }
-                    if (transposed)
-                    {
-                        pointsDataset->setData(temp.data(), nrOfNumericalItems, size);
-                        
-                    }
-                    else
-                    {
-                        pointsDataset->setData(temp.data(), size, nrOfNumericalItems);
-                        
-                    }
+                    pointsDataset->setData(temp.data(), size, nrOfNumericalItems);
                 }
-
                 pointsDataset->setDimensionNames(columnHeader);
+                pointsDataset->setProperty("Sample Names", toQVariantList(row_header));
 
-                if (transposed)
-                {
-                    std::vector<QString> sampleNames = toQStringVector(reader.GetColumnHeader());
-                    pointsDataset->setProperty("Sample Names", QList<QVariant>(sampleNames.cbegin(), sampleNames.cend()));
-                }
-                else
-                {
-                    std::vector<QString> sampleNames = toQStringVector(reader.GetRowHeader());
-                    pointsDataset->setProperty("Sample Names", QList<QVariant>(sampleNames.cbegin(), sampleNames.cend()));
-                }
+#if defined(MANIVAULT_API_Old)
+                events().notifyDatasetChanged(pointsDataset);
+#elif defined(MANIVAULT_API_New)
+                events().notifyDatasetDataChanged(pointsDataset);
+                events().notifyDatasetDataDimensionsChanged(pointsDataset);
+#endif
             }
 
-            
+            Dataset<DatasetImpl> parentDatasetOfClusterDataset = parentDataset;
+            if (!parentDatasetOfClusterDataset.isValid())
+            {
+                if (_mixedDataHierarchyCheckbox->isChecked() && nrOfNumericalItems)
+                    parentDatasetOfClusterDataset = pointsDataset;
+            }
 
-            
+
+
+
             const std::size_t nrOfCategoricalItems = std::count(detectedDataType.cbegin(), detectedDataType.cend(), DT_CATEGORICAL);
             const std::size_t nrOfColorItems = std::count(detectedDataType.cbegin(), detectedDataType.cend(), DT_COLOR);
 
-            
-                
+
+
 
             if (nrOfCategoricalItems || nrOfColorItems)
             {
@@ -526,7 +615,7 @@ void CsvLoader::loadData()
 
             if (nrOfCategoricalItems || nrOfColorItems)
             {
-				#pragma omp parallel for schedule(dynamic,1)
+#pragma omp parallel for schedule(dynamic,1)
                 for (std::ptrdiff_t i = 0; i < items; ++i)
                 {
                     if (nrOfColors[i] > 0)
@@ -544,7 +633,7 @@ void CsvLoader::loadData()
                                         {
                                             bool success = true;
                                             // test if all color indices match with cluster indices, look for exact matches
-                                            
+
                                             for (auto color_it = cluster_info[i].cbegin(); success && (color_it != cluster_info[i].cend()); ++color_it)
                                             {
                                                 bool exact_match = false;
@@ -555,14 +644,14 @@ void CsvLoader::loadData()
                                                 }
                                                 success &= exact_match;
                                             }
-                                        	if (success)
+                                            if (success)
                                             {
                                                 hasColor[j] = i; // i is a color for j
                                                 offset = items;
                                                 plus = 2;
                                             }
 
-                                            if(false) // not using inexact matches for now
+                                            if (false) // not using inexact matches for now
                                             {
                                                 // test if all color indices match with cluster indices. it's ok for mutiple clusters to have the same color
                                                 for (auto color_it = cluster_info[i].cbegin(); success && (color_it != cluster_info[i].cend()); ++color_it)
@@ -583,7 +672,7 @@ void CsvLoader::loadData()
                                                     plus = 2;
                                                 }
                                             }
-                                            
+
                                         }
                                     }
                                 }
@@ -594,17 +683,26 @@ void CsvLoader::loadData()
 
 
                 // time to make the clusters, first process the non-colors
-                
+
+                std::vector<Dataset<Clusters>> clusterDataset(items);
+
                 for (std::ptrdiff_t i = 0; i < items; ++i)
                 {
                     if (detectedDataType[i] == DT_CATEGORICAL)
                     {
                         QString name = clusterNames[i].c_str();
-                        
-                        Dataset<Clusters> clusterDataset = (_mixedDataHierarchyCheckbox->isChecked() && nrOfNumericalItems) ? _core->getDataManager().createDataset("Cluster", name, pointsDataset) : _core->getDataManager().createDataset("Cluster", name);
-                        // Notify others that the dataset was added
-                        events().notifyDatasetAdded(clusterDataset);
 
+                       
+                        clusterDataset[i] = mv::data().createDataset("Cluster", name, parentDatasetOfClusterDataset);
+                        // Notify others that the dataset was added
+                    }
+                }
+
+#pragma omp parallel for schedule(dynamic,1)
+                for (std::ptrdiff_t i = 0; i < items; ++i)
+                {
+                    if (detectedDataType[i] == DT_CATEGORICAL)
+                    {
                         std::ptrdiff_t colorIndex = hasColor[i];
                         std::vector<QColor> generated_colors;
                         if (colorIndex < 0)
@@ -612,6 +710,18 @@ void CsvLoader::loadData()
                             CreateColorVector(cluster_info[i].size(), generated_colors);
                         }
                         std::size_t index = 0;
+
+                       // std::ptrdiff_t nrOfClustersToAdd = cluster_info[i].size();
+                        //auto currentClusters = clusterDataset[i]->getClusters();
+                       // currentClusters.resize(nrOfClustersToAdd);
+
+                        /*
+						#pragma omp parallel for schedule(dynamic,1)
+                        for(std::ptrdiff_t c=0 ;c< nrOfClustersToAdd; ++c)
+                        {
+                            auto it = cluster_info[i].cbegin();
+                            std::advance(it, c);
+                        */
                         for (auto it = cluster_info[i].cbegin(); it != cluster_info[i].cend(); ++it, ++index)
                         {
                             Cluster cluster;
@@ -624,6 +734,7 @@ void CsvLoader::loadData()
                                     if (std::includes(color_it->second.cbegin(), color_it->second.cend(), it->second.cbegin(), it->second.cend()))
                                     {
                                         cluster.setColor(QColor(QString(color_it->first.c_str())));
+                                        break;
                                     }
                                 }
                             }
@@ -631,59 +742,75 @@ void CsvLoader::loadData()
                             {
                                 cluster.setColor(generated_colors[index]);
                             }
-
-                            clusterDataset->addCluster(cluster);
+                            //currentClusters[c] = cluster;
+                            clusterDataset[i]->addCluster(cluster);
                         }
                         processed[i] = 1;
+                        
                         if (colorIndex >= 0)
+                        {
                             processed[colorIndex] = 1; // color has been processed
+                        }
+                            
 
-                            // Notify others that the clusters have changed
+                       
+
+                    }
+                }
+
+
+
+                for (std::ptrdiff_t i = 0; i < items; ++i)
+                {
+                    if (detectedDataType[i] == DT_COLOR)
+                        if (processed[i] == 0)
+                        {
+                            QString name = clusterNames[i].c_str();
+
+
+                            clusterDataset[i] = mv::data().createDataset("Cluster", name, parentDatasetOfClusterDataset);
+                            // Notify others that the dataset was added
+                        }
+                }
+
+                // process unused colors
+#pragma omp parallel for schedule(dynamic,1)
+                for (std::ptrdiff_t i = 0; i < items; ++i)
+                {
+                    if (detectedDataType[i] == DT_COLOR)
+                        if (processed[i] == 0)
+                        {
+
+
+                            for (auto it = cluster_info[i].cbegin(); it != cluster_info[i].cend(); ++it)
+                            {
+                                Cluster cluster;
+                                cluster.setIndices(it->second);
+                                cluster.setName(it->first.c_str());
+                                cluster.setColor(QColor(QString(it->first.c_str())));
+
+                                clusterDataset[i]->addCluster(cluster);
+                            }
+                            processed[i] = 1;
+
+                        }
+                }
+
+                // Notify others that the clusters have changed
+                for (std::ptrdiff_t i = 0; i < items; ++i)
+                {
+                    if (clusterDataset[i].isValid())
+                    {
 #if defined(MANIVAULT_API_Old)
                         events().notifyDatasetChanged(clusterDataset);
 #elif defined(MANIVAULT_API_New)
-                        events().notifyDatasetDataChanged(clusterDataset);
+                        events().notifyDatasetDataChanged(clusterDataset[i]);
+
 #endif
                     }
                 }
             }
-			
-            // process unused colors
-            for (std::ptrdiff_t i = 0; i < items; ++i)
-            {
-                if (detectedDataType[i] == DT_COLOR)
-	            if(processed[i] == 0)
-	            {
-                    QString name = clusterNames[i].c_str();
-                    Dataset<Clusters> clusterDataset = (_mixedDataHierarchyCheckbox->isChecked() && nrOfNumericalItems) ? _core->getDataManager().createDataset("Cluster", name, pointsDataset) : _core->getDataManager().createDataset("Cluster", name);
-                    // Notify others that the dataset was added
-                            
-#if defined(MANIVAULT_API_Old)
-                    events().notifyDatasetChanged(clusterDataset);
-#elif defined(MANIVAULT_API_New)
-                    events().notifyDatasetDataChanged(clusterDataset);
-#endif
 
-                    
-                    for (auto it = cluster_info[i].cbegin(); it != cluster_info[i].cend(); ++it)
-                    {
-                        Cluster cluster;
-                        cluster.setIndices(it->second);
-                        cluster.setName(it->first.c_str());
-                        cluster.setColor(QColor(QString(it->first.c_str())));
-
-                        clusterDataset->addCluster(cluster);
-                    }
-                    processed[i] = 1;
-                    
-                    // Notify others that the clusters have changed
-#if defined(MANIVAULT_API_Old)
-                    events().notifyDatasetChanged(clusterDataset);
-#elif defined(MANIVAULT_API_New)
-                    events().notifyDatasetDataChanged(clusterDataset);
-#endif
-	            }
-            }
         }
     }
 }

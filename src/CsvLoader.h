@@ -6,6 +6,7 @@
 #include <QLineEdit>
 #include <QCheckBox>
 #include <QComboBox>
+#include <actions/DatasetPickerAction.h>
 
 using namespace mv::plugin;
 
@@ -26,9 +27,10 @@ class CsvLoader : public LoaderPlugin
     QCheckBox* _mixedDataHierarchyCheckbox;
     QComboBox* _sourceTypeComboBox;
     QComboBox* _storageTypeComboBox;
+    mv::gui::DatasetPickerAction _datasetPickerAction;
 
 public:
-    CsvLoader(const PluginFactory* factory) : LoaderPlugin(factory) { }
+    CsvLoader(const PluginFactory* factory);
     ~CsvLoader(void) override;
 
     void init() override;

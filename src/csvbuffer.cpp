@@ -10,7 +10,7 @@ namespace ExtCsvLoader
 
 	bool CsvBuffer::skip_character(const char c) const
 	{
-		if (c != m_seperator)
+		if (c != m_separator)
 		{
 			if (c == SpaceChar || (c == TabChar))
 				return true;
@@ -18,13 +18,20 @@ namespace ExtCsvLoader
 		return false;
 	}
 
-	CsvBuffer::CsvBuffer(const std::string& input, const char& separator, std::size_t expectedNrOfItems)
-		:m_buffer(input)
-		, m_empty('\0')
-		, m_seperator(separator)
+	CsvBuffer::CsvBuffer()
+		:m_empty('\0')
+		,m_separator('\0')
 	{
-		process(separator, expectedNrOfItems);
+		
 	}
+	
+	CsvBuffer::CsvBuffer(std::string&& input)
+		:m_buffer(std::move(input))
+		,m_empty('\0')
+		,m_separator('\0')
+	{
+	}
+	
 	
 
 	std::string& CsvBuffer::buffer()
@@ -33,8 +40,15 @@ namespace ExtCsvLoader
 		return m_buffer;
 	}
 
+	
+	bool CsvBuffer::processed() const
+	{
+		return !m_item.empty();
+	}
+
 	void CsvBuffer::process(const char& separator, std::size_t expectedNrOfItems)
 	{
+		m_separator = separator;
 		m_item.clear();
 		if (expectedNrOfItems)
 			m_item.reserve(expectedNrOfItems);
@@ -107,13 +121,13 @@ namespace ExtCsvLoader
 		return m_item.size();
 	}
 
-	void CsvBuffer::getAs(const std::size_t _index, int& v)
+	void CsvBuffer::getAs(const std::size_t _index, int& v) const
 	{
 		if(m_item[_index])
 			v = atoi(m_item[_index]);
 	}
 
-	void CsvBuffer::getAs(const std::size_t _index, float& v)
+	void CsvBuffer::getAs(const std::size_t _index, float& v) const
 	{
 		if (m_item[_index])
 		{
@@ -128,7 +142,7 @@ namespace ExtCsvLoader
 			
 	}
 
-	void CsvBuffer::getAs(const std::size_t _index, biovault::bfloat16_t & v)
+	void CsvBuffer::getAs(const std::size_t _index, biovault::bfloat16_t & v) const
 	{
 		float f;
 		getAs(_index, f);
@@ -137,15 +151,23 @@ namespace ExtCsvLoader
 	
 
 
-	void CsvBuffer::getAs(const std::size_t _index, double& v)
+	void CsvBuffer::getAs(const std::size_t _index, double& v) const
 	{
 		if (m_item[_index])
 			v = atof(m_item[_index]);
 	}
-	void CsvBuffer::getAs(const std::size_t _index, std::string& v)
+	void CsvBuffer::getAs(const std::size_t _index, std::string& v) const
 	{
 		if (m_item[_index])
+		{
+			
+			const char* ptr = m_item[_index];
+			auto size = strlen(ptr);
 			v = m_item[_index];
+			//v = std::string(ptr, ptr+size);
+			
+		}
+			
 	}
 
 	

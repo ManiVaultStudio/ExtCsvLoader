@@ -1,5 +1,6 @@
 #include "csvreader.h"
-
+#include <omp.h>
+#include <QDebug>
 
 namespace ExtCsvLoader
 {
@@ -65,13 +66,16 @@ namespace ExtCsvLoader
 			return;
 		}
 		QTextStream FileStream(&qFile);
-		std::string line;
+		
 
 		// read the first line and determine the number of attributes
-		line = FileStream.readLine().toStdString();
+		 std::string firstLine = FileStream.readLine().toStdString();
 
-		ExtCsvLoader::CsvBuffer buffer(line, m_separator);
-		const std::size_t nrOfBufferItems = buffer.size();
+		 CsvBuffer header(std::move(firstLine));
+		header.process(m_separator);
+		 
+		
+		const std::size_t nrOfBufferItems = header.size();
 
 		if (nrOfBufferItems == 0)
 			return;
@@ -80,7 +84,7 @@ namespace ExtCsvLoader
 		{
 			if (m_with_column_header)
 			{
-				buffer.getAs(0, m_column_row_header);
+				header.getAs(0, m_column_row_header);
 			}
 		}
 
@@ -103,7 +107,7 @@ namespace ExtCsvLoader
 #pragma omp parallel for
 				for (int column_index = 0; column_index < m_nrOfColumns; ++column_index)
 				{
-					buffer.getAs(column_index + 1, m_column_header[column_index]);
+					header.getAs(column_index + 1, m_column_header[column_index]);
 				}
 			}
 			else
@@ -111,7 +115,7 @@ namespace ExtCsvLoader
 #pragma omp parallel for
 				for (int column_index = 0; column_index < m_nrOfColumns; ++column_index)
 				{
-					buffer.getAs(column_index, m_column_header[column_index]);
+					header.getAs(column_index, m_column_header[column_index]);
 				}
 			}
 
@@ -142,26 +146,57 @@ namespace ExtCsvLoader
 		}
 		
 		if (!m_with_column_header)
-			m_data.push_back(line);
-		m_nrOfRows = m_data.size();
+			m_data.push_back(header);
+		
 
 		while (!FileStream.atEnd())
 		{
-			line = FileStream.readLine().toStdString();
+			std::string line = FileStream.readLine().toStdString();
 			//getline(file, line);
 			if (!line.empty())
 			{
-				m_data.push_back(line);
-				++m_nrOfRows;
+				m_data.push_back(CsvBuffer(std::move(line)));
 			}
 		}
-	
+		m_nrOfRows = m_data.size();
 		m_row_header.resize(m_nrOfRows);
-		if (!m_with_row_header)
-			ExtCsvLoader::initialize_header(m_row_header, "");
+		//qDebug() << QString("data loaded");
+		if (m_with_row_header)
+		{
+			if (m_with_column_header)
+			{
+				// fix situation where there is a row and column header but no string for the column_row_header_item;
+				ExtCsvLoader::CsvBuffer& csvbuffer = m_data[0];
+				if (!csvbuffer.processed())
+					csvbuffer.process(m_separator, m_nrOfColumns + 1);
 
+				if (csvbuffer.size() == (m_nrOfColumns + 2))
+				{
+					// header was lacking a row+column header item
+					m_column_header.insert(m_column_header.begin(), m_column_row_header);
+					m_nrOfColumns += 1;
+					m_column_row_header = "";
+				}
+			}
+			const std::size_t nrOfBufferItems = m_with_row_header ? m_nrOfColumns + 1 : m_nrOfColumns;
+			#pragma  omp parallel for schedule(dynamic,1)
+			for (std::ptrdiff_t i = 0; i < m_nrOfRows; ++i)
+			{
+				ExtCsvLoader::CsvBuffer& csvbuffer = m_data[i];
+				if (!csvbuffer.processed())
+					csvbuffer.process(m_separator, nrOfBufferItems);
+				csvbuffer.getAs(0, m_row_header[i]);
+			}
+			//qDebug() << QString("data processed");
+		}
+		else
+		{
+			ExtCsvLoader::initialize_header(m_row_header, "");
+		}
+		qDebug() << m_nrOfColumns << " x " << m_nrOfRows << " loaded and processed";
 	}
 }
+
 
 
 
