@@ -9,8 +9,8 @@
 #include "csvreader.h"
 #include <QDialogButtonBox>
 #include <PointData/DimensionsPickerAction.h>
-
-Q_PLUGIN_METADATA(IID "nl.tudelft.ExtCsvLoader")
+#include <QMainWindow>
+Q_PLUGIN_METADATA(IID "nl.lumc.ExtCsvLoader")
 
 // =============================================================================
 // Loader
@@ -342,12 +342,12 @@ void CsvLoader::loadData()
             tempDataset->setData(std::vector<int8_t>(dimensionNames.size()), dimensionNames.size());
             tempDataset->setDimensionNames(dimensionNames);
 
-            QDialog dialog(nullptr);
+            QDialog dialog(Application::getMainWindow());
             QGridLayout* layout = new QGridLayout;
 
             DimensionsPickerAction& dimensionPickerAction = tempDataset->getDimensionsPickerAction();;
             layout->addWidget(new QLabel("Select Dimensions:"));
-            layout->addWidget(dimensionPickerAction.createWidget(nullptr));
+            layout->addWidget(dimensionPickerAction.createWidget(Application::getMainWindow()));
             auto* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok);
             buttonBox->connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
             layout->addWidget(buttonBox, 3, 0, 1, 2);
@@ -362,6 +362,7 @@ void CsvLoader::loadData()
                     dimension_labels.push_back(loadedColumnHeader[dim]);
                 }
             }
+            mv::data().removeDataset(tempDataset);
         }
         
 

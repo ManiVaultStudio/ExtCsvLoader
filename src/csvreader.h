@@ -3,7 +3,7 @@
 #include <QFile>
 #include "QTextStream"
 #include <omp.h>
-
+#include <QDebug>
 #ifdef _DEBUG
 #define OUTPUT_PROGRESS
 #endif
@@ -88,7 +88,7 @@ namespace ExtCsvLoader
 		std::iota(target_row_index.begin(), target_row_index.end(), std::ptrdiff_t(0));
 		std::vector<std::ptrdiff_t> target_column_index(m_nrOfColumns);
 		std::iota(target_column_index.begin(), target_column_index.end(), std::ptrdiff_t(0));
-		
+
 
 		if(parent_labels.empty())
 		{
@@ -97,16 +97,30 @@ namespace ExtCsvLoader
 		}
 		else
 		{
+			std::vector<std::unordered_map<std::string, std::ptrdiff_t>> temp(omp_get_max_threads());
+			std::unordered_map<std::string, std::ptrdiff_t>& parent_labels_map = temp[0];
+#pragma omp parallel for
+			for (std::ptrdiff_t i = 0; i < parent_labels.size(); ++i)
+			{
+				auto tid = omp_get_thread_num();
+				temp[tid][parent_labels[i]] = i;
+			}
+			for (std::size_t i = 1; i < temp.size(); ++i)
+			{
+				parent_labels_map.merge(temp[i]);
+			}
+			qDebug() << "parent_label_map created";
+
 			if (transposed && m_with_column_header)
 			{
 				target_column_index.assign(m_nrOfColumns, -1);
 				#pragma  omp parallel for schedule(dynamic,1)
 				for (std::ptrdiff_t i = 0; i < m_nrOfColumns; ++i)
 				{
-					auto selected = std::find(parent_labels.cbegin(), parent_labels.cend(), m_column_header[i]);
-					if (selected != parent_labels.cend())
+					auto found = parent_labels_map.find(m_column_header[i]);
+					if (found != parent_labels_map.cend())
 					{
-						target_column_index[i] = (selected - parent_labels.cbegin());
+						target_column_index[i] = found->second;
 					}
 				}
 
@@ -120,10 +134,10 @@ namespace ExtCsvLoader
 				#pragma  omp parallel for schedule(dynamic,1)
 				for (std::ptrdiff_t i = 0; i < m_nrOfRows; ++i)
 				{
-					auto selected = std::find(parent_labels.cbegin(), parent_labels.cend(), m_row_header[i]);
-					if (selected != parent_labels.cend())
+					auto found = parent_labels_map.find(m_row_header[i]);
+					if (found != parent_labels_map.cend())
 					{
-						target_row_index[i] = selected - parent_labels.cbegin();
+						target_row_index[i] = found->second;
 					}
 				}
 				
@@ -132,9 +146,25 @@ namespace ExtCsvLoader
 			}
 			
 		}
+		qDebug() << "parent labels matched";
 
 		if(!dimension_labels.empty())
 		{
+
+			std::vector<std::unordered_map<std::string, std::ptrdiff_t>> temp(omp_get_max_threads());
+			std::unordered_map<std::string, std::ptrdiff_t>& dimension_labels_map = temp[0];
+#pragma omp parallel for
+			for (std::ptrdiff_t i = 0; i < parent_labels.size(); ++i)
+			{
+				auto tid = omp_get_thread_num();
+				temp[tid][dimension_labels[i]] = i;
+			}
+			for (std::size_t i = 1; i < temp.size(); ++i)
+			{
+				dimension_labels_map.merge(temp[i]);
+			}
+			qDebug() << "parent_label_map created";
+
 			if (!transposed && m_with_column_header)
 			{
 				target_column_index.assign(m_nrOfColumns, -1);
@@ -142,10 +172,10 @@ namespace ExtCsvLoader
 				#pragma  omp parallel for schedule(dynamic,1)
 				for (std::ptrdiff_t i = 0; i < m_nrOfColumns; ++i)
 				{
-					auto selected = std::find(dimension_labels.cbegin(), dimension_labels.cend(), m_column_header[i]);
-					if (selected != dimension_labels.cend())
+					auto found = dimension_labels_map.find(m_column_header[i]);
+					if (found != dimension_labels_map.cend())
 					{
-						target_column_index[i] = selected - dimension_labels.cbegin();
+						target_column_index[i] = found->second;
 					}
 				}
 				
@@ -153,15 +183,27 @@ namespace ExtCsvLoader
 			}
 		}
 
+		qDebug() << "dimension labels matched";
 
 		const std::size_t nrOfTargetColumns = column_header.size();
 		const std::size_t nrOfTargetRows = row_header.size();
 		// wait with data allocation until we are sure about the resulting number of columns and rows
-		if (nrOfTargetColumns == 0)
+		
+		const std::size_t totalSize = nrOfTargetColumns * nrOfTargetRows;
+		if (totalSize == 0)
 			return nullptr;
-		if (nrOfTargetRows == 0)
-			return nullptr;
-		T *data = new T[nrOfTargetColumns*nrOfTargetRows];
+		T *data = new T[totalSize];
+
+		#pragma omp parallel
+		{
+			auto tid = omp_get_thread_num();
+			auto chunksize = totalSize / omp_get_num_threads();
+			auto begin = data + chunksize * tid;
+			auto end = (tid == omp_get_num_threads() - 1) ? data+totalSize : (begin + chunksize);
+			std::fill(begin, end, 0);
+		}
+
+
 		 
 		const std::ptrdiff_t column_offset = m_with_row_header ? 1 : 0;
 		#pragma  omp parallel for schedule(dynamic,1)
