@@ -15,10 +15,6 @@ if(MSVC)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
 endif(MSVC)
 
-SET(MANIVAULT_API_VERSION "New" CACHE STRING "ManiVault API Version")
-SET_PROPERTY(CACHE MANIVAULT_API_VERSION PROPERTY STRINGS Old New)
-add_compile_definitions(MANIVAULT_API_${MANIVAULT_API_VERSION})
-
 # Check if the directory to the ManiVault installation has been provided
 if(NOT DEFINED MV_INSTALL_DIR)
     set(MV_INSTALL_DIR "" CACHE PATH "Directory where ManiVault is installed")
