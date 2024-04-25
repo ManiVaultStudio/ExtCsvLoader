@@ -2,10 +2,12 @@
 
 #include <LoaderPlugin.h>
 
-#include <QFileDialog>
-#include <QLineEdit>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QDialog>
+#include <QFileDialog>
+#include <QLineEdit>
+
 #include <actions/DatasetPickerAction.h>
 
 using namespace mv::plugin;

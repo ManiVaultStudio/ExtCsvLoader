@@ -1,18 +1,17 @@
 #pragma once
+
 #include "csvbuffer.h"
-#include <QFile>
-#include "QTextStream"
-#include <omp.h>
+
 #include <QDebug>
-#ifdef _DEBUG
-#define OUTPUT_PROGRESS
-#endif
+#include <QFile>
+#include <QTextStream>
 
+#include <omp.h>
 
-#define SPACE ' '
-#define TAB '\t'
-#define REPLACEMENT_SEPARATOR '_'
-#define QUOTE '\"'
+constexpr auto SPACE = ' ';
+constexpr auto TAB = '\t';
+constexpr auto REPLACEMENT_SEPARATOR = '_';
+constexpr auto QUOTE = '\"';
 
 namespace ExtCsvLoader
 {
@@ -57,8 +56,6 @@ namespace ExtCsvLoader
 		char m_separator;
 		bool m_with_column_header;
 		bool m_with_row_header;
-		
-		
 
 		CSVReader() = delete;
 	public:
@@ -68,8 +65,8 @@ namespace ExtCsvLoader
 		std::string GetColumnRowHeader() const;
 		const std::vector<std::string>& GetColumnHeader() const;
 		const std::vector<std::string>& GetRowHeader() const;
-		std::size_t rows();
-		std::size_t columns();
+		std::size_t rows() const;
+		std::size_t columns() const;
 
 		void read();
 		template<typename T>
@@ -85,12 +82,10 @@ namespace ExtCsvLoader
 		
 		const std::size_t nrOfBufferItems = m_with_row_header ? m_nrOfColumns + 1 : m_nrOfColumns;
 
-
 		std::vector<std::ptrdiff_t> target_row_index(m_nrOfRows);
 		std::iota(target_row_index.begin(), target_row_index.end(), std::ptrdiff_t(0));
 		std::vector<std::ptrdiff_t> target_column_index(m_nrOfColumns);
 		std::iota(target_column_index.begin(), target_column_index.end(), std::ptrdiff_t(0));
-
 
 		if(parent_labels.empty())
 		{
@@ -120,8 +115,6 @@ namespace ExtCsvLoader
 
 		if(!dimension_labels.empty())
 		{
-
-
 			if (!transposed && m_with_column_header)
 			{
 				create_target_index_vector(m_column_header, dimension_labels, target_column_index);
@@ -131,8 +124,6 @@ namespace ExtCsvLoader
 
 			qDebug() << "dimension labels matched";
 		}
-
-		
 
 		const std::size_t nrOfTargetColumns = column_header.size();
 		const std::size_t nrOfTargetRows = row_header.size();
@@ -151,8 +142,6 @@ namespace ExtCsvLoader
 			auto end = (tid == omp_get_num_threads() - 1) ? data+totalSize : (begin + chunksize);
 			std::fill(begin, end, T());
 		}
-
-
 		 
 		const std::ptrdiff_t column_offset = m_with_row_header ? 1 : 0;
 		#pragma  omp parallel for schedule(dynamic,1)
