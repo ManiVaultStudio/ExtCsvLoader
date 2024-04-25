@@ -374,6 +374,10 @@ void CsvLoader::loadData()
                     pointsDataset = ::createPointsDataset(QFileInfo(firstFileName).baseName(), parentDataset);;
                     pointsDataset->setDataElementType<float>();
                     pointsDataset->setData(data_ptr, row_header.size(), column_header.size());
+
+                    events().notifyDatasetDataChanged(pointsDataset);
+                    events().notifyDatasetDataDimensionsChanged(pointsDataset);
+
                     delete[] data_ptr;
                 }
                 else
@@ -391,6 +395,10 @@ void CsvLoader::loadData()
                     pointsDataset = ::createPointsDataset(QFileInfo(firstFileName).baseName(), parentDataset);;
                     pointsDataset->setDataElementType<biovault::bfloat16_t>();
                     pointsDataset->setData(data_ptr, row_header.size(), column_header.size());
+
+                    events().notifyDatasetDataChanged(pointsDataset);
+                    events().notifyDatasetDataDimensionsChanged(pointsDataset);
+
                     delete[] data_ptr;
                 }
                 else
@@ -406,14 +414,9 @@ void CsvLoader::loadData()
                 pointsDataset->setProperty("Sample Names", toQVariantList(row_header));
 
                 // Notify others that the clusters have changed
-#if defined(MANIVAULT_API_Old)
-                events().notifyDatasetChanged(pointsDataset);
-#elif defined(MANIVAULT_API_New)
                 events().notifyDatasetDataChanged(pointsDataset);
                 events().notifyDatasetDataDimensionsChanged(pointsDataset);
-#endif
             }
-
 
         }
         else
@@ -526,13 +529,15 @@ void CsvLoader::loadData()
                         }
                     }
                     pointsDataset->setData(temp.data(), size, nrOfNumericalItems);
+
+                    events().notifyDatasetDataChanged(pointsDataset);
+                    events().notifyDatasetDataDimensionsChanged(pointsDataset);
                 }
                 else
                 {
                     pointsDataset->setDataElementType<biovault::bfloat16_t>();
                     std::vector<biovault::bfloat16_t> temp(nrOfNumericalItems * size);
                     std::ptrdiff_t numericalIndex = 0;
-
 
                     for (std::ptrdiff_t i = 0; i < items; ++i)
                     {
@@ -555,16 +560,17 @@ void CsvLoader::loadData()
                         }
                     }
                     pointsDataset->setData(temp.data(), size, nrOfNumericalItems);
+
+                    events().notifyDatasetDataChanged(pointsDataset);
+                    events().notifyDatasetDataDimensionsChanged(pointsDataset);
+
                 }
                 pointsDataset->setDimensionNames(columnHeader);
                 pointsDataset->setProperty("Sample Names", toQVariantList(row_header));
 
-#if defined(MANIVAULT_API_Old)
-                events().notifyDatasetChanged(pointsDataset);
-#elif defined(MANIVAULT_API_New)
                 events().notifyDatasetDataChanged(pointsDataset);
                 events().notifyDatasetDataDimensionsChanged(pointsDataset);
-#endif
+
             }
 
             Dataset<DatasetImpl> parentDatasetOfClusterDataset = parentDataset;
@@ -772,17 +778,9 @@ void CsvLoader::loadData()
 
                 // Notify others that the clusters have changed
                 for (std::ptrdiff_t i = 0; i < items; ++i)
-                {
                     if (clusterDataset[i].isValid())
-                    {
-#if defined(MANIVAULT_API_Old)
-                        events().notifyDatasetChanged(clusterDataset);
-#elif defined(MANIVAULT_API_New)
                         events().notifyDatasetDataChanged(clusterDataset[i]);
 
-#endif
-                    }
-                }
             }
 
         }
