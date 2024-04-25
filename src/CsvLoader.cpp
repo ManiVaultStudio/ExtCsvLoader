@@ -241,7 +241,6 @@ void CsvLoader::init()
     fileDialogLayout->addWidget(_datasetPickerAction.createWidget(nullptr), rowCount, 1);
 
 
-
     QFileDialog& fileDialogRef = _fileDialog;
     IfValid(settings.value(Keys::selectedNameFilterKey), [&fileDialogRef](const QVariant& value)
         {
@@ -271,15 +270,9 @@ void CsvLoader::init()
 }
 
 
-
-
-
 void CsvLoader::loadData()
 {
     QSettings settings(QString::fromLatin1("HDPS"), QString::fromLatin1("Plugins/ExtCsvLoader"));
-
-
-
 
     if (_fileDialog.exec())
     {
