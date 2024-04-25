@@ -231,17 +231,15 @@ void CsvLoader::init()
     fileDialogLayout->addWidget(storageTypeLabel, rowCount, 0);
     fileDialogLayout->addWidget(_storageTypeComboBox, rowCount++, 1);
 
-
     // Get unique identifier and gui names from all point data sets in the core
     auto dataSets = mv::data().getAllDatasets(std::vector<mv::DataType> {PointType});
-
 
     //dataSets.insert(dataSets.begin(), Dataset<Points>());
     // Assign found dataset(s)
     _datasetPickerAction.setDatasets(dataSets);
 
-    fileDialogLayout->addWidget(_datasetPickerAction.createLabelWidget(nullptr), rowCount, 0);
-    fileDialogLayout->addWidget(_datasetPickerAction.createWidget(nullptr), rowCount, 1);
+    fileDialogLayout->addWidget(_datasetPickerAction.createLabelWidget(&_fileDialog), rowCount, 0);
+    fileDialogLayout->addWidget(_datasetPickerAction.createWidget(&_fileDialog), rowCount, 1);
 
 
     QFileDialog& fileDialogRef = _fileDialog;
