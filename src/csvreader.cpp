@@ -3,8 +3,6 @@
 #include <cstdint>
 #include <unordered_map>
 
-#include <omp.h>
-
 namespace ExtCsvLoader
 {
 	void initialize_header(std::vector<std::string>& header, const std::string& prefix)

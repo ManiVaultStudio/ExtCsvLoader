@@ -6,6 +6,8 @@
 #include <QFile>
 #include <QTextStream>
 
+#include <omp.h>
+
 constexpr auto SPACE = ' ';
 constexpr auto TAB = '\t';
 constexpr auto REPLACEMENT_SEPARATOR = '_';
