@@ -9,10 +9,10 @@
 #endif
 
 
-#define SPACE ' '
-#define TAB '\t'
-#define REPLACEMENT_SEPARATOR '_'
-#define QUOTE '\"'
+constexpr auto SPACE = ' ';
+constexpr auto TAB = '\t';
+constexpr auto REPLACEMENT_SEPARATOR = '_';
+constexpr auto QUOTE = '\"';
 
 namespace ExtCsvLoader
 {

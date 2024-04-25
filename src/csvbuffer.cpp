@@ -22,7 +22,12 @@ namespace ExtCsvLoader
 		:m_empty('\0')
 		,m_separator('\0')
 	{
-		
+	}
+	
+	CsvBuffer::CsvBuffer(const char separator)
+		:m_empty('\0')
+		,m_separator(separator)
+	{
 	}
 	
 	CsvBuffer::CsvBuffer(std::string&& input)
@@ -32,8 +37,13 @@ namespace ExtCsvLoader
 	{
 	}
 	
+	CsvBuffer::CsvBuffer(std::string&& input, const char separator)
+		:m_buffer(std::move(input))
+		,m_empty('\0')
+		,m_separator(separator)
+	{
+	}
 	
-
 	std::string& CsvBuffer::buffer()
 	{
 		m_item.clear();
