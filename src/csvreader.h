@@ -82,12 +82,10 @@ namespace ExtCsvLoader
 		
 		const std::size_t nrOfBufferItems = m_with_row_header ? m_nrOfColumns + 1 : m_nrOfColumns;
 
-
 		std::vector<std::ptrdiff_t> target_row_index(m_nrOfRows);
 		std::iota(target_row_index.begin(), target_row_index.end(), std::ptrdiff_t(0));
 		std::vector<std::ptrdiff_t> target_column_index(m_nrOfColumns);
 		std::iota(target_column_index.begin(), target_column_index.end(), std::ptrdiff_t(0));
-
 
 		if(parent_labels.empty())
 		{
