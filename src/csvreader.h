@@ -1,13 +1,10 @@
 #pragma once
-#include "csvbuffer.h"
-#include <QFile>
-#include "QTextStream"
-#include <omp.h>
-#include <QDebug>
-#ifdef _DEBUG
-#define OUTPUT_PROGRESS
-#endif
 
+#include "csvbuffer.h"
+
+#include <QDebug>
+#include <QFile>
+#include <QTextStream>
 
 constexpr auto SPACE = ' ';
 constexpr auto TAB = '\t';
@@ -57,8 +54,6 @@ namespace ExtCsvLoader
 		char m_separator;
 		bool m_with_column_header;
 		bool m_with_row_header;
-		
-		
 
 		CSVReader() = delete;
 	public:
@@ -68,8 +63,8 @@ namespace ExtCsvLoader
 		std::string GetColumnRowHeader() const;
 		const std::vector<std::string>& GetColumnHeader() const;
 		const std::vector<std::string>& GetRowHeader() const;
-		std::size_t rows();
-		std::size_t columns();
+		std::size_t rows() const;
+		std::size_t columns() const;
 
 		void read();
 		template<typename T>
@@ -120,8 +115,6 @@ namespace ExtCsvLoader
 
 		if(!dimension_labels.empty())
 		{
-
-
 			if (!transposed && m_with_column_header)
 			{
 				create_target_index_vector(m_column_header, dimension_labels, target_column_index);
@@ -131,8 +124,6 @@ namespace ExtCsvLoader
 
 			qDebug() << "dimension labels matched";
 		}
-
-		
 
 		const std::size_t nrOfTargetColumns = column_header.size();
 		const std::size_t nrOfTargetRows = row_header.size();
@@ -151,8 +142,6 @@ namespace ExtCsvLoader
 			auto end = (tid == omp_get_num_threads() - 1) ? data+totalSize : (begin + chunksize);
 			std::fill(begin, end, T());
 		}
-
-
 		 
 		const std::ptrdiff_t column_offset = m_with_row_header ? 1 : 0;
 		#pragma  omp parallel for schedule(dynamic,1)

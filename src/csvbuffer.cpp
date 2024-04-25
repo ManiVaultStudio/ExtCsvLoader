@@ -1,7 +1,5 @@
 #include "csvbuffer.h"
 
-
-
 namespace ExtCsvLoader
 {
 	const char QuoteChar = '\"';

@@ -1,15 +1,18 @@
 #include "CsvLoader.h"
 
-#include <PointData/PointData.h>
-#include <ClusterData/ClusterData.h>
+#include "csvreader.h"
+
 #include <Dataset.h>
 
-#include <util/Icon.h>
-#include <QtCore>
-#include "csvreader.h"
-#include <QDialogButtonBox>
+#include <ClusterData/ClusterData.h>
 #include <PointData/DimensionsPickerAction.h>
+#include <PointData/PointData.h>
+#include <util/Icon.h>
+
+#include <QDialogButtonBox>
 #include <QMainWindow>
+#include <QtCore>
+
 Q_PLUGIN_METADATA(IID "nl.lumc.ExtCsvLoader")
 
 // =============================================================================

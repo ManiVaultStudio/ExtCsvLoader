@@ -1,6 +1,9 @@
 #include "csvreader.h"
+
+#include <cstdint>
+#include <unordered_map>
+
 #include <omp.h>
-#include <QDebug>
 
 namespace ExtCsvLoader
 {
@@ -74,12 +77,12 @@ namespace ExtCsvLoader
 		return m_row_header;
 	}
 
-	std::size_t CSVReader::columns()
+	std::size_t CSVReader::columns() const
 	{
 		return m_nrOfColumns;
 	}
 
-	std::size_t CSVReader::rows()
+	std::size_t CSVReader::rows() const
 	{
 		return m_nrOfRows;
 	};
@@ -133,7 +136,7 @@ namespace ExtCsvLoader
 			if (m_with_row_header)
 			{
 #pragma omp parallel for
-				for (int column_index = 0; column_index < m_nrOfColumns; ++column_index)
+				for (std::int64_t column_index = 0; column_index < m_nrOfColumns; ++column_index)
 				{
 					header.getAs(column_index + 1, m_column_header[column_index]);
 				}
@@ -141,7 +144,7 @@ namespace ExtCsvLoader
 			else
 			{
 #pragma omp parallel for
-				for (int column_index = 0; column_index < m_nrOfColumns; ++column_index)
+				for (std::int64_t column_index = 0; column_index < m_nrOfColumns; ++column_index)
 				{
 					header.getAs(column_index, m_column_header[column_index]);
 				}

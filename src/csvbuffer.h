@@ -1,7 +1,8 @@
 #pragma once
+
+#include <sstream>
 #include <string>
 #include <vector>
-#include <sstream>
 
 #include <biovault_bfloat16/biovault_bfloat16.h>
 
