@@ -44,14 +44,14 @@ namespace ExtCsvLoader
 	{
 	}
 	
-	CsvBuffer::CsvBuffer(std::string& input)
+	CsvBuffer::CsvBuffer(const std::string& input)
 		:m_buffer(input)
 		,m_empty('\0')
 		,m_separator('\0')
 	{
 	}
 	
-	CsvBuffer::CsvBuffer(std::string& input, const char separator)
+	CsvBuffer::CsvBuffer(const std::string& input, const char separator)
 		:m_buffer(input)
 		,m_empty('\0')
 		,m_separator(separator)

@@ -21,8 +21,8 @@ namespace ExtCsvLoader
 		CsvBuffer(const char separator);
 		CsvBuffer(std::string&& input);
 		CsvBuffer(std::string&& input, const char separator);
-		CsvBuffer(std::string& input);
-		CsvBuffer(std::string& input, const char separator);
+		CsvBuffer(const std::string& input);
+		CsvBuffer(const std::string& input, const char separator);
 		~CsvBuffer() = default;
 		
 		std::string& buffer();
