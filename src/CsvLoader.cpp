@@ -132,144 +132,144 @@ namespace Keys
 
 void CsvLoader::init()
 {
-//    QStringList fileTypeOptions;
-//    fileTypeOptions.append("CSV (*.csv *.txt)");
-//    fileTypeOptions.append("TSV (*.tsv)");
-//    _fileDialog.setOption(QFileDialog::DontUseNativeDialog);
-//    _fileDialog.setFileMode(QFileDialog::ExistingFile);
-//    _fileDialog.setOption(QFileDialog::DontUseNativeDialog, true);
-//    _fileDialog.setOption(QFileDialog::DontResolveSymlinks, true);
-//    _fileDialog.setOption(QFileDialog::DontUseCustomDirectoryIcons, true);
-//    _fileDialog.setNameFilters(fileTypeOptions);
-//
-//    QSettings settings(QString::fromLatin1("HDPS"), QString::fromLatin1("Plugins/ExtCsvLoader"));
-//    QGridLayout* fileDialogLayout = dynamic_cast<QGridLayout*>(_fileDialog.layout());
-//
-//    int rowCount = fileDialogLayout->rowCount();
-//
-//    QLabel* separatorLabel = new QLabel("separator");
-//    _separatorLineEdit = new QLineEdit;
-//    _separatorLineEdit->setMaximumWidth(13);
-//    _separatorLineEdit->setMaxLength(1);
-//    {
-//        const auto value = settings.value(Keys::separatorValueKey);
-//        if (value.isValid())
-//            _separatorLineEdit->setText(value.toChar());
-//        else
-//            _separatorLineEdit->setText(",");
-//    }
-//    fileDialogLayout->addWidget(separatorLabel, rowCount, 0);
-//    fileDialogLayout->addWidget(_separatorLineEdit, rowCount++, 1);
-//
-//    QLabel* columnHeaderLabel = new QLabel("column header");
-//    _columnHeaderCheckBox = new QCheckBox();
-//    {
-//        const auto value = settings.value(Keys::columnHeaderValueKey);
-//        if (value.isValid())
-//            _columnHeaderCheckBox->setChecked(value.toBool());
-//    }
-//    fileDialogLayout->addWidget(columnHeaderLabel, rowCount, 0);
-//    fileDialogLayout->addWidget(_columnHeaderCheckBox, rowCount++, 1);
-//
-//    QLabel* rowHeaderLabel = new QLabel("row header");
-//    _rowHeaderCheckBox = new QCheckBox();
-//    {
-//        const auto value = settings.value(Keys::rowHeaderValueKey);
-//        if (value.isValid())
-//            _rowHeaderCheckBox->setChecked(value.toBool());
-//    }
-//    fileDialogLayout->addWidget(rowHeaderLabel, rowCount, 0);
-//    fileDialogLayout->addWidget(_rowHeaderCheckBox, rowCount++, 1);
-//
-//    QLabel* transposeLabel = new QLabel("transpose");
-//    _transposeCheckBox = new QCheckBox();
-//    {
-//        const auto value = settings.value(Keys::transposeValueKey);
-//        if (value.isValid())
-//            _transposeCheckBox->setChecked(value.toBool());
-//    }
-//    fileDialogLayout->addWidget(transposeLabel, rowCount, 0);
-//    fileDialogLayout->addWidget(_transposeCheckBox, rowCount++, 1);
-//
-//
-//    QLabel* sourceTypeLabel = new QLabel("Source Data");
-//    _sourceTypeComboBox = new QComboBox;
-//    _sourceTypeComboBox->addItem("Mixed (auto-detect)", 0);
-//    _sourceTypeComboBox->addItem("Numerical", 1);
-//    _sourceTypeComboBox->addItem("Categorical", 2);
-//
-//    fileDialogLayout->addWidget(sourceTypeLabel, rowCount, 0);
-//    fileDialogLayout->addWidget(_sourceTypeComboBox, rowCount++, 1);
-//
-//    QLabel* mixedDataHierarchyLabel = new QLabel("Mixed Hierarchy");
-//    _mixedDataHierarchyCheckbox = new QCheckBox();
-//    {
-//        const auto value = settings.value(Keys::hierarchyValueKey);
-//        if (value.isValid())
-//            _mixedDataHierarchyCheckbox->setChecked(value.toBool());
-//    }
-//    QObject::connect(_sourceTypeComboBox, &QComboBox::currentIndexChanged, [mixedDataHierarchyLabel, this](int index)
-//        {
-//            mixedDataHierarchyLabel->setVisible(index == 0);
-//            this->_mixedDataHierarchyCheckbox->setVisible(index == 0);
-//        });
-//
-//    fileDialogLayout->addWidget(mixedDataHierarchyLabel, rowCount, 0);
-//    fileDialogLayout->addWidget(_mixedDataHierarchyCheckbox, rowCount++, 1);
-//
-//    QLabel* storageTypeLabel = new QLabel("Numerical Storage");
-//    _storageTypeComboBox = new QComboBox;
-//    _storageTypeComboBox->addItem("Float (32-bits)", 1);
-//    _storageTypeComboBox->addItem("BFloat16 (16-bits)", 2);
-//    _storageTypeComboBox->setCurrentIndex([&settings]
-//        {
-//            const auto value = settings.value(Keys::storageValueKey);
-//            if (value.isValid())return value.toInt();
-//            return 1;
-//        }());
-//
-//    fileDialogLayout->addWidget(storageTypeLabel, rowCount, 0);
-//    fileDialogLayout->addWidget(_storageTypeComboBox, rowCount++, 1);
-//
-//
-//    // Get unique identifier and gui names from all point data sets in the core
-//    auto dataSets = mv::data().getAllDatasets(std::vector<mv::DataType> {PointType});
-//
-//
-//    //dataSets.insert(dataSets.begin(), Dataset<Points>());
-//    // Assign found dataset(s)
-//    _datasetPickerAction.setDatasets(dataSets);
-//
-//    fileDialogLayout->addWidget(_datasetPickerAction.createLabelWidget(nullptr), rowCount, 0);
-//    fileDialogLayout->addWidget(_datasetPickerAction.createWidget(nullptr), rowCount, 1);
-//
-//
-//    QFileDialog& fileDialogRef = _fileDialog;
-//    IfValid(settings.value(Keys::selectedNameFilterKey), [&fileDialogRef](const QVariant& value)
-//        {
-//            fileDialogRef.selectNameFilter(value.toString());
-//        });
-//    IfValid(settings.value(Keys::fileNameKey), [&fileDialogRef](const QVariant& value)
-//        {
-//            fileDialogRef.selectFile(value.toString());
-//        });
-//
-//    _sourceTypeComboBox->setCurrentIndex([&settings]
-//        {
-//            const auto value = settings.value(Keys::sourceValueKey);
-//            if (value.isValid())return value.toInt();
-//            return 0;
-//        }());
-//
-//    const auto onFilterSelected = [separatorLabel, this](const QString& nameFilter)
-//    {
-//        const bool isTSVSelected{ nameFilter == "TSV (*.tsv)" };
-//        this->_separatorLineEdit->setVisible(!isTSVSelected);
-//        separatorLabel->setVisible(!isTSVSelected);
-//    };
-//
-//    QObject::connect(&_fileDialog, &QFileDialog::filterSelected, onFilterSelected);
-//    onFilterSelected(_fileDialog.selectedNameFilter());
+    QStringList fileTypeOptions;
+    fileTypeOptions.append("CSV (*.csv *.txt)");
+    fileTypeOptions.append("TSV (*.tsv)");
+    _fileDialog.setOption(QFileDialog::DontUseNativeDialog);
+    _fileDialog.setFileMode(QFileDialog::ExistingFile);
+    _fileDialog.setOption(QFileDialog::DontUseNativeDialog, true);
+    _fileDialog.setOption(QFileDialog::DontResolveSymlinks, true);
+    _fileDialog.setOption(QFileDialog::DontUseCustomDirectoryIcons, true);
+    _fileDialog.setNameFilters(fileTypeOptions);
+
+    QSettings settings(QString::fromLatin1("HDPS"), QString::fromLatin1("Plugins/ExtCsvLoader"));
+    QGridLayout* fileDialogLayout = dynamic_cast<QGridLayout*>(_fileDialog.layout());
+
+    int rowCount = fileDialogLayout->rowCount();
+
+    QLabel* separatorLabel = new QLabel("separator");
+    _separatorLineEdit = new QLineEdit;
+    _separatorLineEdit->setMaximumWidth(13);
+    _separatorLineEdit->setMaxLength(1);
+    {
+        const auto value = settings.value(Keys::separatorValueKey);
+        if (value.isValid())
+            _separatorLineEdit->setText(value.toChar());
+        else
+            _separatorLineEdit->setText(",");
+    }
+    fileDialogLayout->addWidget(separatorLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_separatorLineEdit, rowCount++, 1);
+
+    QLabel* columnHeaderLabel = new QLabel("column header");
+    _columnHeaderCheckBox = new QCheckBox();
+    {
+        const auto value = settings.value(Keys::columnHeaderValueKey);
+        if (value.isValid())
+            _columnHeaderCheckBox->setChecked(value.toBool());
+    }
+    fileDialogLayout->addWidget(columnHeaderLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_columnHeaderCheckBox, rowCount++, 1);
+
+    QLabel* rowHeaderLabel = new QLabel("row header");
+    _rowHeaderCheckBox = new QCheckBox();
+    {
+        const auto value = settings.value(Keys::rowHeaderValueKey);
+        if (value.isValid())
+            _rowHeaderCheckBox->setChecked(value.toBool());
+    }
+    fileDialogLayout->addWidget(rowHeaderLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_rowHeaderCheckBox, rowCount++, 1);
+
+    QLabel* transposeLabel = new QLabel("transpose");
+    _transposeCheckBox = new QCheckBox();
+    {
+        const auto value = settings.value(Keys::transposeValueKey);
+        if (value.isValid())
+            _transposeCheckBox->setChecked(value.toBool());
+    }
+    fileDialogLayout->addWidget(transposeLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_transposeCheckBox, rowCount++, 1);
+
+
+    QLabel* sourceTypeLabel = new QLabel("Source Data");
+    _sourceTypeComboBox = new QComboBox;
+    _sourceTypeComboBox->addItem("Mixed (auto-detect)", 0);
+    _sourceTypeComboBox->addItem("Numerical", 1);
+    _sourceTypeComboBox->addItem("Categorical", 2);
+
+    fileDialogLayout->addWidget(sourceTypeLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_sourceTypeComboBox, rowCount++, 1);
+
+    QLabel* mixedDataHierarchyLabel = new QLabel("Mixed Hierarchy");
+    _mixedDataHierarchyCheckbox = new QCheckBox();
+    {
+        const auto value = settings.value(Keys::hierarchyValueKey);
+        if (value.isValid())
+            _mixedDataHierarchyCheckbox->setChecked(value.toBool());
+    }
+    QObject::connect(_sourceTypeComboBox, &QComboBox::currentIndexChanged, [mixedDataHierarchyLabel, this](int index)
+        {
+            mixedDataHierarchyLabel->setVisible(index == 0);
+            this->_mixedDataHierarchyCheckbox->setVisible(index == 0);
+        });
+
+    fileDialogLayout->addWidget(mixedDataHierarchyLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_mixedDataHierarchyCheckbox, rowCount++, 1);
+
+    QLabel* storageTypeLabel = new QLabel("Numerical Storage");
+    _storageTypeComboBox = new QComboBox;
+    _storageTypeComboBox->addItem("Float (32-bits)", 1);
+    _storageTypeComboBox->addItem("BFloat16 (16-bits)", 2);
+    _storageTypeComboBox->setCurrentIndex([&settings]
+        {
+            const auto value = settings.value(Keys::storageValueKey);
+            if (value.isValid())return value.toInt();
+            return 1;
+        }());
+
+    fileDialogLayout->addWidget(storageTypeLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_storageTypeComboBox, rowCount++, 1);
+
+
+    // Get unique identifier and gui names from all point data sets in the core
+    auto dataSets = mv::data().getAllDatasets(std::vector<mv::DataType> {PointType});
+
+
+    //dataSets.insert(dataSets.begin(), Dataset<Points>());
+    // Assign found dataset(s)
+    _datasetPickerAction.setDatasets(dataSets);
+
+    fileDialogLayout->addWidget(_datasetPickerAction.createLabelWidget(nullptr), rowCount, 0);
+    fileDialogLayout->addWidget(_datasetPickerAction.createWidget(nullptr), rowCount, 1);
+
+
+    QFileDialog& fileDialogRef = _fileDialog;
+    IfValid(settings.value(Keys::selectedNameFilterKey), [&fileDialogRef](const QVariant& value)
+        {
+            fileDialogRef.selectNameFilter(value.toString());
+        });
+    IfValid(settings.value(Keys::fileNameKey), [&fileDialogRef](const QVariant& value)
+        {
+            fileDialogRef.selectFile(value.toString());
+        });
+
+    _sourceTypeComboBox->setCurrentIndex([&settings]
+        {
+            const auto value = settings.value(Keys::sourceValueKey);
+            if (value.isValid())return value.toInt();
+            return 0;
+        }());
+
+    const auto onFilterSelected = [separatorLabel, this](const QString& nameFilter)
+    {
+        const bool isTSVSelected{ nameFilter == "TSV (*.tsv)" };
+        this->_separatorLineEdit->setVisible(!isTSVSelected);
+        separatorLabel->setVisible(!isTSVSelected);
+    };
+
+    QObject::connect(&_fileDialog, &QFileDialog::filterSelected, onFilterSelected);
+    onFilterSelected(_fileDialog.selectedNameFilter());
 }
 
 
