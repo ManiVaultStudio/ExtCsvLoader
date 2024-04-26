@@ -1,15 +1,18 @@
 #include "CsvLoader.h"
 
-#include <PointData/PointData.h>
-#include <ClusterData/ClusterData.h>
+#include "csvreader.h"
+
 #include <Dataset.h>
 
-#include <util/Icon.h>
-#include <QtCore>
-#include "csvreader.h"
-#include <QDialogButtonBox>
+#include <ClusterData/ClusterData.h>
 #include <PointData/DimensionsPickerAction.h>
+#include <PointData/PointData.h>
+#include <util/Icon.h>
+
+#include <QDialogButtonBox>
 #include <QMainWindow>
+#include <QtCore>
+
 Q_PLUGIN_METADATA(IID "nl.lumc.ExtCsvLoader")
 
 // =============================================================================
@@ -144,7 +147,7 @@ void CsvLoader::init()
 
     int rowCount = fileDialogLayout->rowCount();
 
-    QLabel* separatorLabel = new QLabel("separator");
+    QLabel* separatorLabel = new QLabel("Separator");
     _separatorLineEdit = new QLineEdit;
     _separatorLineEdit->setMaximumWidth(13);
     _separatorLineEdit->setMaxLength(1);
@@ -158,7 +161,7 @@ void CsvLoader::init()
     fileDialogLayout->addWidget(separatorLabel, rowCount, 0);
     fileDialogLayout->addWidget(_separatorLineEdit, rowCount++, 1);
 
-    QLabel* columnHeaderLabel = new QLabel("column header");
+    QLabel* columnHeaderLabel = new QLabel("Column header");
     _columnHeaderCheckBox = new QCheckBox();
     {
         const auto value = settings.value(Keys::columnHeaderValueKey);
@@ -168,7 +171,7 @@ void CsvLoader::init()
     fileDialogLayout->addWidget(columnHeaderLabel, rowCount, 0);
     fileDialogLayout->addWidget(_columnHeaderCheckBox, rowCount++, 1);
 
-    QLabel* rowHeaderLabel = new QLabel("row header");
+    QLabel* rowHeaderLabel = new QLabel("Row header");
     _rowHeaderCheckBox = new QCheckBox();
     {
         const auto value = settings.value(Keys::rowHeaderValueKey);
@@ -178,7 +181,7 @@ void CsvLoader::init()
     fileDialogLayout->addWidget(rowHeaderLabel, rowCount, 0);
     fileDialogLayout->addWidget(_rowHeaderCheckBox, rowCount++, 1);
 
-    QLabel* transposeLabel = new QLabel("transpose");
+    QLabel* transposeLabel = new QLabel("Transpose");
     _transposeCheckBox = new QCheckBox();
     {
         const auto value = settings.value(Keys::transposeValueKey);
@@ -228,19 +231,15 @@ void CsvLoader::init()
     fileDialogLayout->addWidget(storageTypeLabel, rowCount, 0);
     fileDialogLayout->addWidget(_storageTypeComboBox, rowCount++, 1);
 
-
     // Get unique identifier and gui names from all point data sets in the core
     auto dataSets = mv::data().getAllDatasets(std::vector<mv::DataType> {PointType});
-
 
     //dataSets.insert(dataSets.begin(), Dataset<Points>());
     // Assign found dataset(s)
     _datasetPickerAction.setDatasets(dataSets);
 
-    fileDialogLayout->addWidget(_datasetPickerAction.createLabelWidget(nullptr), rowCount, 0);
-    fileDialogLayout->addWidget(_datasetPickerAction.createWidget(nullptr), rowCount, 1);
-
-
+    fileDialogLayout->addWidget(_datasetPickerAction.createLabelWidget(&_fileDialog), rowCount, 0);
+    fileDialogLayout->addWidget(_datasetPickerAction.createWidget(&_fileDialog), rowCount, 1);
 
     QFileDialog& fileDialogRef = _fileDialog;
     IfValid(settings.value(Keys::selectedNameFilterKey), [&fileDialogRef](const QVariant& value)
@@ -271,15 +270,9 @@ void CsvLoader::init()
 }
 
 
-
-
-
 void CsvLoader::loadData()
 {
     QSettings settings(QString::fromLatin1("HDPS"), QString::fromLatin1("Plugins/ExtCsvLoader"));
-
-
-
 
     if (_fileDialog.exec())
     {
@@ -365,10 +358,6 @@ void CsvLoader::loadData()
             mv::data().removeDataset(tempDataset);
         }
         
-
-
-
-
         std::vector<std::string> column_header;
         std::vector<std::string> row_header;
         if (sourceType == 1)
@@ -385,6 +374,10 @@ void CsvLoader::loadData()
                     pointsDataset = ::createPointsDataset(QFileInfo(firstFileName).baseName(), parentDataset);;
                     pointsDataset->setDataElementType<float>();
                     pointsDataset->setData(data_ptr, row_header.size(), column_header.size());
+
+                    events().notifyDatasetDataChanged(pointsDataset);
+                    events().notifyDatasetDataDimensionsChanged(pointsDataset);
+
                     delete[] data_ptr;
                 }
                 else
@@ -402,6 +395,10 @@ void CsvLoader::loadData()
                     pointsDataset = ::createPointsDataset(QFileInfo(firstFileName).baseName(), parentDataset);;
                     pointsDataset->setDataElementType<biovault::bfloat16_t>();
                     pointsDataset->setData(data_ptr, row_header.size(), column_header.size());
+
+                    events().notifyDatasetDataChanged(pointsDataset);
+                    events().notifyDatasetDataDimensionsChanged(pointsDataset);
+
                     delete[] data_ptr;
                 }
                 else
@@ -417,14 +414,9 @@ void CsvLoader::loadData()
                 pointsDataset->setProperty("Sample Names", toQVariantList(row_header));
 
                 // Notify others that the clusters have changed
-#if defined(MANIVAULT_API_Old)
-                events().notifyDatasetChanged(pointsDataset);
-#elif defined(MANIVAULT_API_New)
                 events().notifyDatasetDataChanged(pointsDataset);
                 events().notifyDatasetDataDimensionsChanged(pointsDataset);
-#endif
             }
-
 
         }
         else
@@ -537,13 +529,15 @@ void CsvLoader::loadData()
                         }
                     }
                     pointsDataset->setData(temp.data(), size, nrOfNumericalItems);
+
+                    events().notifyDatasetDataChanged(pointsDataset);
+                    events().notifyDatasetDataDimensionsChanged(pointsDataset);
                 }
                 else
                 {
                     pointsDataset->setDataElementType<biovault::bfloat16_t>();
                     std::vector<biovault::bfloat16_t> temp(nrOfNumericalItems * size);
                     std::ptrdiff_t numericalIndex = 0;
-
 
                     for (std::ptrdiff_t i = 0; i < items; ++i)
                     {
@@ -566,16 +560,17 @@ void CsvLoader::loadData()
                         }
                     }
                     pointsDataset->setData(temp.data(), size, nrOfNumericalItems);
+
+                    events().notifyDatasetDataChanged(pointsDataset);
+                    events().notifyDatasetDataDimensionsChanged(pointsDataset);
+
                 }
                 pointsDataset->setDimensionNames(columnHeader);
                 pointsDataset->setProperty("Sample Names", toQVariantList(row_header));
 
-#if defined(MANIVAULT_API_Old)
-                events().notifyDatasetChanged(pointsDataset);
-#elif defined(MANIVAULT_API_New)
                 events().notifyDatasetDataChanged(pointsDataset);
                 events().notifyDatasetDataDimensionsChanged(pointsDataset);
-#endif
+
             }
 
             Dataset<DatasetImpl> parentDatasetOfClusterDataset = parentDataset;
@@ -584,22 +579,15 @@ void CsvLoader::loadData()
                 if (_mixedDataHierarchyCheckbox->isChecked() && nrOfNumericalItems)
                     parentDatasetOfClusterDataset = pointsDataset;
             }
-
-
-
-
             const std::size_t nrOfCategoricalItems = std::count(detectedDataType.cbegin(), detectedDataType.cend(), DT_CATEGORICAL);
             const std::size_t nrOfColorItems = std::count(detectedDataType.cbegin(), detectedDataType.cend(), DT_COLOR);
-
-
-
 
             if (nrOfCategoricalItems || nrOfColorItems)
             {
 #pragma omp parallel for schedule(dynamic,1)
                 for (std::ptrdiff_t i = 0; i < items; ++i)
                 {
-                    if ((detectedDataType[i] == DT_CATEGORICAL) | (detectedDataType[i] == DT_COLOR))
+                    if ((detectedDataType[i] == DT_CATEGORICAL) || (detectedDataType[i] == DT_COLOR))
                     {
                         for (std::size_t s = 0; s < size; ++s)
                         {
@@ -695,10 +683,8 @@ void CsvLoader::loadData()
                     if (detectedDataType[i] == DT_CATEGORICAL)
                     {
                         QString name = clusterNames[i].c_str();
-
                        
                         clusterDataset[i] = mv::data().createDataset("Cluster", name, parentDatasetOfClusterDataset);
-                        // Notify others that the dataset was added
                     }
                 }
 
@@ -756,13 +742,8 @@ void CsvLoader::loadData()
                             processed[colorIndex] = 1; // color has been processed
                         }
                             
-
-                       
-
                     }
                 }
-
-
 
                 for (std::ptrdiff_t i = 0; i < items; ++i)
                 {
@@ -770,10 +751,7 @@ void CsvLoader::loadData()
                         if (processed[i] == 0)
                         {
                             QString name = clusterNames[i].c_str();
-
-
                             clusterDataset[i] = mv::data().createDataset("Cluster", name, parentDatasetOfClusterDataset);
-                            // Notify others that the dataset was added
                         }
                 }
 
@@ -784,8 +762,6 @@ void CsvLoader::loadData()
                     if (detectedDataType[i] == DT_COLOR)
                         if (processed[i] == 0)
                         {
-
-
                             for (auto it = cluster_info[i].cbegin(); it != cluster_info[i].cend(); ++it)
                             {
                                 Cluster cluster;
@@ -802,17 +778,9 @@ void CsvLoader::loadData()
 
                 // Notify others that the clusters have changed
                 for (std::ptrdiff_t i = 0; i < items; ++i)
-                {
                     if (clusterDataset[i].isValid())
-                    {
-#if defined(MANIVAULT_API_Old)
-                        events().notifyDatasetChanged(clusterDataset);
-#elif defined(MANIVAULT_API_New)
                         events().notifyDatasetDataChanged(clusterDataset[i]);
 
-#endif
-                    }
-                }
             }
 
         }
