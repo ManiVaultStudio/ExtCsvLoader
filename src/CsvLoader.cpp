@@ -13,6 +13,12 @@
 #include <QMainWindow>
 #include <QtCore>
 
+#include <algorithm>
+#include <map>
+#include <stdlib.h>
+#include <string>
+#include <vector>
+
 Q_PLUGIN_METADATA(IID "nl.lumc.ExtCsvLoader")
 
 // =============================================================================
@@ -24,7 +30,6 @@ using namespace mv::gui;
 
 namespace
 {
-
     std::vector<QString> toQStringVector(const std::vector<std::string>& v)
     {
         std::vector<QString> result(v.size());
@@ -46,16 +51,6 @@ namespace
             result[i] = l[i].toString().toStdString();
         return result;
     }
-    // Call the specified function on the specified value, if it is valid.
-    template <typename TFunction>
-    void IfValid(const QVariant& value, const TFunction& function)
-    {
-        if (value.isValid())
-        {
-            function(value);
-        }
-    }
-
 
     Dataset<Points> createPointsDataset(QString dataSetName, Dataset<DatasetImpl> parentDataset = Dataset<DatasetImpl>())
     {
@@ -67,7 +62,6 @@ namespace
 
     void CreateColorVector(std::size_t nrOfColors, std::vector<QColor>& colors)
     {
-
         if (nrOfColors)
         {
             colors.resize(nrOfColors);
@@ -119,15 +113,15 @@ CsvLoader::~CsvLoader(void)
 // Alphabetic list of keys used to access settings from QSettings.
 namespace Keys
 {
-    const QLatin1String columnHeaderValueKey("columnHeader");
-    const QLatin1String fileNameKey("fileName");
-    const QLatin1String hierarchyValueKey("hierarchy");
-    const QLatin1String rowHeaderValueKey("rowHeader");
-    const QLatin1String selectedNameFilterKey("selectedNameFilter");
-    const QLatin1String separatorValueKey("separatorValue");
-    const QLatin1String sourceValueKey("sourceValue");
-    const QLatin1String storageValueKey("storageValue");
-    const QLatin1String transposeValueKey("transposeValue");
+    const QString columnHeaderValueKey("columnHeader");
+    const QString fileNameKey("fileName");
+    const QString hierarchyValueKey("hierarchy");
+    const QString rowHeaderValueKey("rowHeader");
+    const QString selectedNameFilterKey("selectedNameFilter");
+    const QString separatorValueKey("separatorValue");
+    const QString sourceValueKey("sourceValue");
+    const QString storageValueKey("storageValue");
+    const QString transposeValueKey("transposeValue");
 }
 
 void CsvLoader::init()
@@ -142,7 +136,6 @@ void CsvLoader::init()
     _fileDialog.setOption(QFileDialog::DontUseCustomDirectoryIcons, true);
     _fileDialog.setNameFilters(fileTypeOptions);
 
-    QSettings settings(QString::fromLatin1("HDPS"), QString::fromLatin1("Plugins/ExtCsvLoader"));
     QGridLayout* fileDialogLayout = dynamic_cast<QGridLayout*>(_fileDialog.layout());
 
     int rowCount = fileDialogLayout->rowCount();
@@ -152,11 +145,8 @@ void CsvLoader::init()
     _separatorLineEdit->setMaximumWidth(13);
     _separatorLineEdit->setMaxLength(1);
     {
-        const auto value = settings.value(Keys::separatorValueKey);
-        if (value.isValid())
-            _separatorLineEdit->setText(value.toChar());
-        else
-            _separatorLineEdit->setText(",");
+        const auto separator = getSetting(Keys::separatorValueKey, ",").toChar();
+        _separatorLineEdit->setText(separator);
     }
     fileDialogLayout->addWidget(separatorLabel, rowCount, 0);
     fileDialogLayout->addWidget(_separatorLineEdit, rowCount++, 1);
@@ -164,9 +154,8 @@ void CsvLoader::init()
     QLabel* columnHeaderLabel = new QLabel("Column header");
     _columnHeaderCheckBox = new QCheckBox();
     {
-        const auto value = settings.value(Keys::columnHeaderValueKey);
-        if (value.isValid())
-            _columnHeaderCheckBox->setChecked(value.toBool());
+        const auto columnHeaderValue = getSetting(Keys::columnHeaderValueKey).toBool();
+        _columnHeaderCheckBox->setChecked(columnHeaderValue);
     }
     fileDialogLayout->addWidget(columnHeaderLabel, rowCount, 0);
     fileDialogLayout->addWidget(_columnHeaderCheckBox, rowCount++, 1);
@@ -174,9 +163,8 @@ void CsvLoader::init()
     QLabel* rowHeaderLabel = new QLabel("Row header");
     _rowHeaderCheckBox = new QCheckBox();
     {
-        const auto value = settings.value(Keys::rowHeaderValueKey);
-        if (value.isValid())
-            _rowHeaderCheckBox->setChecked(value.toBool());
+        const auto rowHeaderValue = getSetting(Keys::rowHeaderValueKey).toBool();
+        _rowHeaderCheckBox->setChecked(rowHeaderValue);
     }
     fileDialogLayout->addWidget(rowHeaderLabel, rowCount, 0);
     fileDialogLayout->addWidget(_rowHeaderCheckBox, rowCount++, 1);
@@ -184,13 +172,11 @@ void CsvLoader::init()
     QLabel* transposeLabel = new QLabel("Transpose");
     _transposeCheckBox = new QCheckBox();
     {
-        const auto value = settings.value(Keys::transposeValueKey);
-        if (value.isValid())
-            _transposeCheckBox->setChecked(value.toBool());
+        const auto transposeValue = getSetting(Keys::transposeValueKey).toBool();
+        _transposeCheckBox->setChecked(transposeValue);
     }
     fileDialogLayout->addWidget(transposeLabel, rowCount, 0);
     fileDialogLayout->addWidget(_transposeCheckBox, rowCount++, 1);
-
 
     QLabel* sourceTypeLabel = new QLabel("Source Data");
     _sourceTypeComboBox = new QComboBox;
@@ -204,9 +190,8 @@ void CsvLoader::init()
     QLabel* mixedDataHierarchyLabel = new QLabel("Mixed Hierarchy");
     _mixedDataHierarchyCheckbox = new QCheckBox();
     {
-        const auto value = settings.value(Keys::hierarchyValueKey);
-        if (value.isValid())
-            _mixedDataHierarchyCheckbox->setChecked(value.toBool());
+        const auto hierarchyValue = getSetting(Keys::hierarchyValueKey).toBool();
+        _mixedDataHierarchyCheckbox->setChecked(hierarchyValue);
     }
     QObject::connect(_sourceTypeComboBox, &QComboBox::currentIndexChanged, [mixedDataHierarchyLabel, this](int index)
         {
@@ -221,12 +206,7 @@ void CsvLoader::init()
     _storageTypeComboBox = new QComboBox;
     _storageTypeComboBox->addItem("Float (32-bits)", 1);
     _storageTypeComboBox->addItem("BFloat16 (16-bits)", 2);
-    _storageTypeComboBox->setCurrentIndex([&settings]
-        {
-            const auto value = settings.value(Keys::storageValueKey);
-            if (value.isValid())return value.toInt();
-            return 1;
-        }());
+    _storageTypeComboBox->setCurrentIndex(getSetting(Keys::storageValueKey, 1).toInt());
 
     fileDialogLayout->addWidget(storageTypeLabel, rowCount, 0);
     fileDialogLayout->addWidget(_storageTypeComboBox, rowCount++, 1);
@@ -241,22 +221,15 @@ void CsvLoader::init()
     fileDialogLayout->addWidget(_datasetPickerAction.createLabelWidget(&_fileDialog), rowCount, 0);
     fileDialogLayout->addWidget(_datasetPickerAction.createWidget(&_fileDialog), rowCount, 1);
 
-    QFileDialog& fileDialogRef = _fileDialog;
-    IfValid(settings.value(Keys::selectedNameFilterKey), [&fileDialogRef](const QVariant& value)
-        {
-            fileDialogRef.selectNameFilter(value.toString());
-        });
-    IfValid(settings.value(Keys::fileNameKey), [&fileDialogRef](const QVariant& value)
-        {
-            fileDialogRef.selectFile(value.toString());
-        });
+    const auto selectedNameFilterSetting = getSetting(Keys::selectedNameFilterKey, QVariant());
+    if (selectedNameFilterSetting.isValid())
+        _fileDialog.selectNameFilter(selectedNameFilterSetting.toString());
 
-    _sourceTypeComboBox->setCurrentIndex([&settings]
-        {
-            const auto value = settings.value(Keys::sourceValueKey);
-            if (value.isValid())return value.toInt();
-            return 0;
-        }());
+    const auto fileNameSetting = getSetting(Keys::fileNameKey, QVariant());
+    if (fileNameSetting.isValid())
+        _fileDialog.selectFile(fileNameSetting.toString());
+
+    _sourceTypeComboBox->setCurrentIndex(getSetting(Keys::sourceValueKey, 0).toInt());
 
     const auto onFilterSelected = [separatorLabel, this](const QString& nameFilter)
     {
@@ -272,8 +245,6 @@ void CsvLoader::init()
 
 void CsvLoader::loadData()
 {
-    QSettings settings(QString::fromLatin1("HDPS"), QString::fromLatin1("Plugins/ExtCsvLoader"));
-
     if (_fileDialog.exec())
     {
         QStringList fileNames = _fileDialog.selectedFiles();
@@ -288,15 +259,15 @@ void CsvLoader::loadData()
         QString selectedNameFilter = _fileDialog.selectedNameFilter();
 
         const char sep = _separatorLineEdit->text().toStdString()[0];
-        settings.setValue(Keys::separatorValueKey, sep);
-        settings.setValue(Keys::columnHeaderValueKey, _columnHeaderCheckBox->isChecked());
-        settings.setValue(Keys::rowHeaderValueKey, _rowHeaderCheckBox->isChecked());
+        setSetting(Keys::separatorValueKey, sep);
+        setSetting(Keys::columnHeaderValueKey, _columnHeaderCheckBox->isChecked());
+        setSetting(Keys::rowHeaderValueKey, _rowHeaderCheckBox->isChecked());
 
-        settings.setValue(Keys::transposeValueKey, _transposeCheckBox->isChecked());
-        settings.setValue(Keys::sourceValueKey, _sourceTypeComboBox->currentIndex());
-        settings.setValue(Keys::storageValueKey, _storageTypeComboBox->currentIndex());
-        settings.setValue(Keys::fileNameKey, firstFileName);
-        settings.setValue(Keys::selectedNameFilterKey, selectedNameFilter);
+        setSetting(Keys::transposeValueKey, _transposeCheckBox->isChecked());
+        setSetting(Keys::sourceValueKey, _sourceTypeComboBox->currentIndex());
+        setSetting(Keys::storageValueKey, _storageTypeComboBox->currentIndex());
+        setSetting(Keys::fileNameKey, firstFileName);
+        setSetting(Keys::selectedNameFilterKey, selectedNameFilter);
 
         char selected_separator = _separatorLineEdit->text()[0].toLatin1();
         if (selectedNameFilter == "TSV (*.tsv)")
@@ -306,11 +277,10 @@ void CsvLoader::loadData()
         ExtCsvLoader::CSVReader reader(firstFileName, selected_separator, _columnHeaderCheckBox->isChecked(), _rowHeaderCheckBox->isChecked());
         reader.read();
 
+        const int sourceType    = _sourceTypeComboBox->currentData().toInt();
+        const bool transposed   = _transposeCheckBox->isChecked();
 
-        int sourceType = _sourceTypeComboBox->currentData().toInt();
-        bool transposed = _transposeCheckBox->isChecked();
-
-        auto parentDataset = _datasetPickerAction.getCurrentDataset();
+        auto parentDataset      = _datasetPickerAction.getCurrentDataset();
 
         std::vector<std::string> parent_labels;
 
