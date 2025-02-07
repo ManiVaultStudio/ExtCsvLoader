@@ -221,11 +221,11 @@ void CsvLoader::init()
     fileDialogLayout->addWidget(_datasetPickerAction.createLabelWidget(&_fileDialog), rowCount, 0);
     fileDialogLayout->addWidget(_datasetPickerAction.createWidget(&_fileDialog), rowCount, 1);
 
-    const auto selectedNameFilterSetting = getSetting(Keys::selectedNameFilterKey, QVariant::QVariant());
+    const auto selectedNameFilterSetting = getSetting(Keys::selectedNameFilterKey, QVariant());
     if (selectedNameFilterSetting.isValid())
         _fileDialog.selectNameFilter(selectedNameFilterSetting.toString());
 
-    const auto fileNameSetting = getSetting(Keys::fileNameKey, QVariant::QVariant());
+    const auto fileNameSetting = getSetting(Keys::fileNameKey, QVariant());
     if (fileNameSetting.isValid())
         _fileDialog.selectFile(fileNameSetting.toString());
 
