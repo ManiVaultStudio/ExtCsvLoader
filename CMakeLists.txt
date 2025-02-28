@@ -55,7 +55,6 @@ target_include_directories(${PROJECT} PRIVATE "${ManiVault_INCLUDE_DIR}")
 # Target properties
 # -----------------------------------------------------------------------------
 target_compile_features(${PROJECT} PRIVATE cxx_std_20)
-target_compile_options(${PROJECT} PRIVATE ${OpenMP_CXX_FLAGS})
 
 # -----------------------------------------------------------------------------
 # Target library linking
