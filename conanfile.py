@@ -82,7 +82,6 @@ class ExtCsvLoaderConan(ConanFile):
         if self.settings.os == "Windows":
             del self.options.fPIC
 
-
     def generate(self):
         generator = None
         if self.settings.os == "Macos":
@@ -109,6 +108,11 @@ class ExtCsvLoaderConan(ConanFile):
 
         # Set some build options
         tc.variables["MV_UNITY_BUILD"] = "ON"
+
+        if os_info.is_macos:
+            proc = subprocess.run("brew --prefix libomp", shell=True, capture_output=True)
+            prefix_path = f"{proc.stdout.decode('UTF-8').strip()}"
+            tc.variables["OpenMP_ROOT"] = prefix_path
 
         tc.generate()
 
