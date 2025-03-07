@@ -8,6 +8,7 @@
 #include <PointData/DimensionsPickerAction.h>
 #include <PointData/PointData.h>
 #include <util/Icon.h>
+#include <util/StyledIcon.h>
 
 #include <QDialogButtonBox>
 #include <QMainWindow>
@@ -758,14 +759,14 @@ void CsvLoader::loadData()
 }
 
 
-QIcon CsvLoaderFactory::getIcon(const QColor& color /*= Qt::black*/) const
-{
-    return createPluginIcon("CSV", color);
-}
-
 // =============================================================================
 // Factory
 // =============================================================================
+
+CsvLoaderFactory::CsvLoaderFactory()
+{
+    setIcon(util::StyledIcon(createPluginIcon("CSV")));
+}
 
 LoaderPlugin* CsvLoaderFactory::produce()
 {
