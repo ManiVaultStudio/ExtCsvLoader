@@ -1,6 +1,6 @@
 {
     "name" : "Extended CSV Loader",
     "menuName" : "CSV (.csv)",
-    "version" : "0.3",
+    "version" : "0.5",
     "dependencies" : ["Points", "Cluster"]
 }
