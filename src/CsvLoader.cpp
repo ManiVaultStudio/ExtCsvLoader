@@ -53,12 +53,23 @@ namespace
         return result;
     }
 
-    Dataset<Points> createPointsDataset(QString dataSetName, Dataset<DatasetImpl> parentDataset = Dataset<DatasetImpl>())
+    Dataset<Points> createPointsDataset(QString dataSetName, Dataset<DatasetImpl> parentDataset = Dataset<DatasetImpl>(), bool makeDerived=false)
     {
         if (parentDataset.isValid())
-            return mv::data().createDataset("Points", dataSetName, parentDataset);
+        {
+            if (makeDerived)
+            {
+                return mv::data().createDerivedDataset(dataSetName, parentDataset);
+            }
+            else
+            {
+                return mv::data().createDataset("Points", dataSetName, parentDataset);
+            }
+        }
         else
+        {
             return mv::data().createDataset("Points", dataSetName);
+        }
     }
 
     void CreateColorVector(std::size_t nrOfColors, std::vector<QColor>& colors)
@@ -95,15 +106,15 @@ namespace
 
 
 CsvLoader::CsvLoader(const PluginFactory* factory) : LoaderPlugin(factory)
-, _separatorLineEdit(nullptr)
-, _columnHeaderCheckBox(nullptr)
-, _rowHeaderCheckBox(nullptr)
-, _transposeCheckBox(nullptr)
-, _mixedDataHierarchyCheckbox(nullptr)
-, _sourceTypeComboBox(nullptr)
-, _storageTypeComboBox(nullptr)
+, _separatorLineEdit(this, "Separator")
+, _columnHeaderCheckBox(this, "Column header")
+, _rowHeaderCheckBox(this, "Row header")
+, _transposeCheckBox(this, "Transpose")
+, _mixedDataHierarchyCheckbox(this, "Mixed Hierarchy")
+, _sourceTypeComboBox(this, "Source Data")
+, _storageTypeComboBox(this, "Numerical Storage")
 , _datasetPickerAction(this, "Parent Dataset")
-, _derivedDataCheckBox(nullptr)
+, _derivedDataCheckBox(this, "Derived dataset")
 {
 
 }
@@ -143,122 +154,98 @@ void CsvLoader::init()
 
     int rowCount = fileDialogLayout->rowCount();
 
-    QLabel* separatorLabel = new QLabel("Separator:");
-    _separatorLineEdit = new QLineEdit;
-    _separatorLineEdit->setMaximumWidth(13);
-    _separatorLineEdit->setMaxLength(1);
+    auto updateseparatorString = [this]() {
+        QString text = _separatorLineEdit.getString();
+        if (text.length() > 1) {
+            text = text.right(1);
+            _separatorLineEdit.setString(text);
+        }
+        };
+    
     {
         const auto separator = getSetting(Keys::separatorValueKey, ",").toChar();
-        _separatorLineEdit->setText(separator);
+        _separatorLineEdit.setString(separator);
     }
-    fileDialogLayout->addWidget(separatorLabel, rowCount, 0);
-    fileDialogLayout->addWidget(_separatorLineEdit, rowCount++, 1);
-
-    QLabel* columnHeaderLabel = new QLabel("Column header:");
-    _columnHeaderCheckBox = new QCheckBox();
+    QLabel* separatorLineEditLabel = new QLabel("Separator:");
+    fileDialogLayout->addWidget(separatorLineEditLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_separatorLineEdit.createWidget(&_fileDialog), rowCount++, 1);
+    connect(&_separatorLineEdit, &StringAction::stringChanged, this, updateseparatorString);
     {
         const auto columnHeaderValue = getSetting(Keys::columnHeaderValueKey).toBool();
-        _columnHeaderCheckBox->setChecked(columnHeaderValue);
+        _columnHeaderCheckBox.setChecked(columnHeaderValue);
     }
-    fileDialogLayout->addWidget(columnHeaderLabel, rowCount, 0);
-    fileDialogLayout->addWidget(_columnHeaderCheckBox, rowCount++, 1);
-
-    QLabel* rowHeaderLabel = new QLabel("Row header:");
-    _rowHeaderCheckBox = new QCheckBox();
+    QLabel* columnHeaderCheckBoxLabel = new QLabel("Column header:");
+    fileDialogLayout->addWidget(columnHeaderCheckBoxLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_columnHeaderCheckBox.createWidget(&_fileDialog), rowCount++, 1);
     {
         const auto rowHeaderValue = getSetting(Keys::rowHeaderValueKey).toBool();
-        _rowHeaderCheckBox->setChecked(rowHeaderValue);
+        _rowHeaderCheckBox.setChecked(rowHeaderValue);
     }
-    fileDialogLayout->addWidget(rowHeaderLabel, rowCount, 0);
-    fileDialogLayout->addWidget(_rowHeaderCheckBox, rowCount++, 1);
-
-    QLabel* transposeLabel = new QLabel("Transpose:");
-    _transposeCheckBox = new QCheckBox();
+    QLabel* rowHeaderCheckBoxLabel = new QLabel("Row header:");
+    fileDialogLayout->addWidget(rowHeaderCheckBoxLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_rowHeaderCheckBox.createWidget(&_fileDialog), rowCount++, 1);
     {
         const auto transposeValue = getSetting(Keys::transposeValueKey).toBool();
-        _transposeCheckBox->setChecked(transposeValue);
+        _transposeCheckBox.setChecked(transposeValue);
     }
-    fileDialogLayout->addWidget(transposeLabel, rowCount, 0);
-    fileDialogLayout->addWidget(_transposeCheckBox, rowCount++, 1);
+    QLabel* transposeCheckBoxLabel = new QLabel("Transpose:");
+    fileDialogLayout->addWidget(transposeCheckBoxLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_transposeCheckBox.createWidget(&_fileDialog), rowCount++, 1);
 
-    QLabel* sourceTypeLabel = new QLabel("Source Data:");
-    _sourceTypeComboBox = new QComboBox;
-    _sourceTypeComboBox->addItem("Mixed (auto-detect)", 0);
-    _sourceTypeComboBox->addItem("Numerical", 1);
-    _sourceTypeComboBox->addItem("Categorical", 2);
-
-    fileDialogLayout->addWidget(sourceTypeLabel, rowCount, 0);
-    fileDialogLayout->addWidget(_sourceTypeComboBox, rowCount++, 1);
-
-    QLabel* mixedDataHierarchyLabel = new QLabel("Mixed Hierarchy");
-    _mixedDataHierarchyCheckbox = new QCheckBox();
+    _sourceTypeComboBox.initialize({ "Mixed (auto-detect)" ,"Numerical","Categorical"}, "Mixed (auto-detect)");
+    QLabel* sourceTypeComboBoxLabel = new QLabel("Source Data:");
+    fileDialogLayout->addWidget(sourceTypeComboBoxLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_sourceTypeComboBox.createWidget(&_fileDialog), rowCount++, 1);
     {
         const auto hierarchyValue = getSetting(Keys::hierarchyValueKey).toBool();
-        _mixedDataHierarchyCheckbox->setChecked(hierarchyValue);
+        _mixedDataHierarchyCheckbox.setChecked(hierarchyValue);
     }
-    QObject::connect(_sourceTypeComboBox, &QComboBox::currentIndexChanged, [mixedDataHierarchyLabel, this](int index)
-        {
-            mixedDataHierarchyLabel->setVisible(index == 0);
-            this->_mixedDataHierarchyCheckbox->setVisible(index == 0);
-        });
+    QLabel* mixedDataHierarchyCheckboxLabel = new QLabel("Mixed Hierarchy:");
+    fileDialogLayout->addWidget(mixedDataHierarchyCheckboxLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_mixedDataHierarchyCheckbox.createWidget(&_fileDialog), rowCount++, 1);
 
-    fileDialogLayout->addWidget(mixedDataHierarchyLabel, rowCount, 0);
-    fileDialogLayout->addWidget(_mixedDataHierarchyCheckbox, rowCount++, 1);
-
-    QLabel* storageTypeLabel = new QLabel("Numerical Storage:");
-    _storageTypeComboBox = new QComboBox;
-    _storageTypeComboBox->addItem("Float (32-bits)", 1);
-    _storageTypeComboBox->addItem("BFloat16 (16-bits)", 2);
-    _storageTypeComboBox->setCurrentIndex(getSetting(Keys::storageValueKey, 1).toInt());
-
-    fileDialogLayout->addWidget(storageTypeLabel, rowCount, 0);
-    fileDialogLayout->addWidget(_storageTypeComboBox, rowCount++, 1);
+    QLabel* storageTypeComboBoxLabel = new QLabel("Numerical Storage:");
+    _storageTypeComboBox.initialize({"Float (32-bits)" ,"BFloat16 (16-bits)" }, "BFloat16 (16-bits)");
+    fileDialogLayout->addWidget(storageTypeComboBoxLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_storageTypeComboBox.createWidget(&_fileDialog), rowCount++, 1);
 
     // Get unique identifier and gui names from all point data sets in the core
     auto dataSets = mv::data().getAllDatasets(std::vector<mv::DataType> {PointType});
 
-    //dataSets.insert(dataSets.begin(), Dataset<Points>());
     // Assign found dataset(s)
     _datasetPickerAction.setDatasets(dataSets);
 
-    QLabel* datasetPickerLabel = new QLabel("Parent Dataset:");
-    fileDialogLayout->addWidget(datasetPickerLabel, rowCount, 0);
+    QLabel* datasetPickerActionLabel = new QLabel("Parent Dataset:");
+    fileDialogLayout->addWidget(datasetPickerActionLabel, rowCount, 0);
     fileDialogLayout->addWidget(_datasetPickerAction.createWidget(&_fileDialog), rowCount++, 1);
 
-    QLabel* derivedDataLabel = new QLabel("Derived data:");
-    _derivedDataCheckBox = new QCheckBox();
-    {
-        const auto derivedDataValue = getSetting(Keys::derivedDataValueKey).toBool();
-        _derivedDataCheckBox->setChecked(derivedDataValue);
-    }
-    _derivedDataCheckBox->setEnabled(false);
-    fileDialogLayout->addWidget(derivedDataLabel, rowCount, 0);
-    fileDialogLayout->addWidget(_derivedDataCheckBox, rowCount++, 1);
+    _derivedDataCheckBox.setChecked(getSetting(Keys::derivedDataValueKey).toBool());
+    _derivedDataCheckBox.setEnabled(false);
+    QLabel* derivedDataCheckBoxLabel = new QLabel("Derived dataset:");
+    fileDialogLayout->addWidget(derivedDataCheckBoxLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_derivedDataCheckBox.createWidget(&_fileDialog), rowCount++, 1);
 
-    // --- Logic to enable/disable the checkbox based on criteria ---
+    // Lambda to update checkbox state
     auto updateDerivedDataCheckbox = [this]() {
-        // Parent dataset combobox is not empty and has a value
         bool parentDatasetValid = _datasetPickerAction.getCurrentDataset().isValid();
-        // Source Data combobox value is "Numerical" (index 1)
-        bool isNumerical = (_sourceTypeComboBox->currentIndex() == 1);
+        bool isNumerical = (_sourceTypeComboBox.getCurrentText() == "Numerical");
         bool enable = parentDatasetValid && isNumerical;
-        _derivedDataCheckBox->setEnabled(enable);
+        _derivedDataCheckBox.setEnabled(enable);
         if (!enable) {
-            _derivedDataCheckBox->setChecked(false);
+            _derivedDataCheckBox.setChecked(false);
         }
-    };
-
-    // Connect to changes in Parent Dataset and Source Data combobox
-    QObject::connect(_datasetPickerAction.createWidget(&_fileDialog), &QWidget::destroyed, [this, updateDerivedDataCheckbox](QObject*) {
-        // Defensive: update when widget is destroyed (should not happen in normal use)
+        };
+    auto updateSourceTypeComboBox = [updateDerivedDataCheckbox,this]() {
         updateDerivedDataCheckbox();
-    });
-    QObject::connect(_sourceTypeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [updateDerivedDataCheckbox](int) {
-        updateDerivedDataCheckbox();
-    });
-    QObject::connect(_datasetPickerAction.createWidget(&_fileDialog), SIGNAL(currentIndexChanged(int)), this, SLOT(updateDerivedDataCheckbox()));
+        _mixedDataHierarchyCheckbox.setVisible(_sourceTypeComboBox.getCurrentIndex() == 0);
+        };
+    // Connect signals to update the checkbox state
 
-    // Also update once at init
+    connect(&_sourceTypeComboBox, &OptionAction::currentIndexChanged, this, updateSourceTypeComboBox);
+
+    connect(&_datasetPickerAction, &DatasetPickerAction::currentIndexChanged, this, updateDerivedDataCheckbox);
+
+    // Initial state update
     updateDerivedDataCheckbox();
 
     const auto selectedNameFilterSetting = getSetting(Keys::selectedNameFilterKey, QVariant());
@@ -269,13 +256,12 @@ void CsvLoader::init()
     if (fileNameSetting.isValid())
         _fileDialog.selectFile(fileNameSetting.toString());
 
-    _sourceTypeComboBox->setCurrentIndex(getSetting(Keys::sourceValueKey, 0).toInt());
+    _sourceTypeComboBox.setCurrentIndex(getSetting(Keys::sourceValueKey, 0).toInt());
 
-    const auto onFilterSelected = [separatorLabel, this](const QString& nameFilter)
+    const auto onFilterSelected = [this](const QString& nameFilter)
     {
         const bool isTSVSelected{ nameFilter == "TSV (*.tsv)" };
-        this->_separatorLineEdit->setVisible(!isTSVSelected);
-        separatorLabel->setVisible(!isTSVSelected);
+        _separatorLineEdit.setVisible(!isTSVSelected);
     };
 
     QObject::connect(&_fileDialog, &QFileDialog::filterSelected, onFilterSelected);
@@ -298,28 +284,28 @@ void CsvLoader::loadData()
         bool result = true;
         QString selectedNameFilter = _fileDialog.selectedNameFilter();
 
-        const char sep = _separatorLineEdit->text().toStdString()[0];
+        const char sep = _separatorLineEdit.getString().toStdString()[0];
         setSetting(Keys::separatorValueKey, sep);
-        setSetting(Keys::columnHeaderValueKey, _columnHeaderCheckBox->isChecked());
-        setSetting(Keys::rowHeaderValueKey, _rowHeaderCheckBox->isChecked());
+        setSetting(Keys::columnHeaderValueKey, _columnHeaderCheckBox.isChecked());
+        setSetting(Keys::rowHeaderValueKey, _rowHeaderCheckBox.isChecked());
 
-        setSetting(Keys::transposeValueKey, _transposeCheckBox->isChecked());
-        setSetting(Keys::sourceValueKey, _sourceTypeComboBox->currentIndex());
-        setSetting(Keys::storageValueKey, _storageTypeComboBox->currentIndex());
+        setSetting(Keys::transposeValueKey, _transposeCheckBox.isChecked());
+        setSetting(Keys::sourceValueKey, _sourceTypeComboBox.getCurrentIndex());
+        setSetting(Keys::storageValueKey, _storageTypeComboBox.getCurrentIndex());
         setSetting(Keys::fileNameKey, firstFileName);
         setSetting(Keys::selectedNameFilterKey, selectedNameFilter);
-        setSetting(Keys::derivedDataValueKey, _derivedDataCheckBox->isChecked());
+        setSetting(Keys::derivedDataValueKey, _derivedDataCheckBox.isChecked());
 
-        char selected_separator = _separatorLineEdit->text()[0].toLatin1();
+        char selected_separator = _separatorLineEdit.getString()[0].toLatin1();
         if (selectedNameFilter == "TSV (*.tsv)")
         {
             selected_separator = '\t';
         }
-        ExtCsvLoader::CSVReader reader(firstFileName, selected_separator, _columnHeaderCheckBox->isChecked(), _rowHeaderCheckBox->isChecked());
+        ExtCsvLoader::CSVReader reader(firstFileName, selected_separator, _columnHeaderCheckBox.isChecked(), _rowHeaderCheckBox.isChecked());
         reader.read();
 
-        const int sourceType    = _sourceTypeComboBox->currentData().toInt();
-        const bool transposed   = _transposeCheckBox->isChecked();
+        const QString sourceType    = _sourceTypeComboBox.getCurrentText();
+        const bool transposed   = _transposeCheckBox.isChecked();
 
         auto parentDataset      = _datasetPickerAction.getCurrentDataset();
 
@@ -333,7 +319,7 @@ void CsvLoader::loadData()
         }
 
         std::vector<std::string> dimension_labels;
-        if(!_transposeCheckBox->isChecked())
+        if(!_transposeCheckBox.isChecked())
         {
             auto loadedColumnHeader = reader.GetColumnHeader();
             std::vector<QString> dimensionNames(loadedColumnHeader.size());
@@ -371,18 +357,18 @@ void CsvLoader::loadData()
         
         std::vector<std::string> column_header;
         std::vector<std::string> row_header;
-        if (sourceType == 1)
+        if (sourceType == "Numerical")
         {
-            int storageType = _storageTypeComboBox->currentData().toInt();
+            QString storageType = _storageTypeComboBox.getCurrentText();
 
             Dataset<Points> pointsDataset;
 
-            if (storageType == 1)
+            if (storageType == "Float (32-bits)")
             {
                 float* data_ptr = reader.get_data<float>(transposed, column_header, row_header, parent_labels, dimension_labels);
                 if (data_ptr)
                 {
-                    pointsDataset = ::createPointsDataset(QFileInfo(firstFileName).baseName(), parentDataset);;
+                    pointsDataset = ::createPointsDataset(QFileInfo(firstFileName).baseName(), parentDataset, _derivedDataCheckBox.isChecked());;
                     pointsDataset->setDataElementType<float>();
                     pointsDataset->setData(data_ptr, row_header.size(), column_header.size());
 
@@ -398,12 +384,12 @@ void CsvLoader::loadData()
 
 
             }
-            else if (storageType == 2)
+            else if (storageType == "BFloat16 (16-bits)")
             {
                 biovault::bfloat16_t* data_ptr = reader.get_data< biovault::bfloat16_t>(transposed, column_header, row_header, parent_labels, dimension_labels);
                 if (data_ptr)
                 {
-                    pointsDataset = ::createPointsDataset(QFileInfo(firstFileName).baseName(), parentDataset);;
+                    pointsDataset = ::createPointsDataset(QFileInfo(firstFileName).baseName(), parentDataset, _derivedDataCheckBox.isChecked());;
                     pointsDataset->setDataElementType<biovault::bfloat16_t>();
                     pointsDataset->setData(data_ptr, row_header.size(), column_header.size());
 
@@ -451,7 +437,7 @@ void CsvLoader::loadData()
             std::vector<std::ptrdiff_t> hasColor(items,-1);
             std::vector<uint8_t> processed(items, 0);
 
-            if (sourceType == 0) // autodetect
+            if (sourceType == "Mixed (auto-detect)") // autodetect
             {
 #pragma omp parallel for schedule(dynamic,1)
                 for (std::ptrdiff_t i = 0; i < items; ++i)
@@ -508,14 +494,14 @@ void CsvLoader::loadData()
             Dataset<Points> pointsDataset;
             if (nrOfNumericalItems)
             {
-                int storageType = _storageTypeComboBox->currentData().toInt();
+                QString storageType = _storageTypeComboBox.getCurrentText();
 
-                pointsDataset = ::createPointsDataset(QFileInfo(firstFileName).baseName(), parentDataset);
+                pointsDataset = ::createPointsDataset(QFileInfo(firstFileName).baseName(), parentDataset, _derivedDataCheckBox.isChecked());
 
                 std::vector<std::string> sourceColumnHeader = column_header;
                 std::vector<QString> columnHeader(nrOfNumericalItems);
 
-                if (storageType == 1)
+                if (storageType == "Float (32-bits)")
                 {
                     pointsDataset->setDataElementType<float>();
 
@@ -587,7 +573,7 @@ void CsvLoader::loadData()
             Dataset<DatasetImpl> parentDatasetOfClusterDataset = parentDataset;
             if (!parentDatasetOfClusterDataset.isValid())
             {
-                if (_mixedDataHierarchyCheckbox->isChecked() && nrOfNumericalItems)
+                if (_mixedDataHierarchyCheckbox.isChecked() && nrOfNumericalItems)
                     parentDatasetOfClusterDataset = pointsDataset;
             }
             const std::size_t nrOfCategoricalItems = std::count(detectedDataType.cbegin(), detectedDataType.cend(), DT_CATEGORICAL);

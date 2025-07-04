@@ -8,6 +8,9 @@
 #include <QLineEdit>
 
 #include <actions/DatasetPickerAction.h>
+#include <actions/StringAction.h>
+#include <actions/ToggleAction.h>
+#include <actions/OptionAction.h>
 
 using namespace mv::plugin;
 
@@ -19,26 +22,24 @@ class CsvLoader : public LoaderPlugin
 {
     Q_OBJECT
 
-	QFileDialog _fileDialog;
+        QFileDialog _fileDialog;
 
-    QLineEdit* _separatorLineEdit;
-    QCheckBox* _columnHeaderCheckBox;
-    QCheckBox* _rowHeaderCheckBox;
-    QCheckBox* _transposeCheckBox;
-    QCheckBox* _mixedDataHierarchyCheckbox;
-    QComboBox* _sourceTypeComboBox;
-    QComboBox* _storageTypeComboBox;
+    mv::gui::StringAction _separatorLineEdit;
+    mv::gui::ToggleAction _columnHeaderCheckBox;
+    mv::gui::ToggleAction _rowHeaderCheckBox;
+    mv::gui::ToggleAction _transposeCheckBox;
+    mv::gui::ToggleAction _mixedDataHierarchyCheckbox;
+    mv::gui::OptionAction _sourceTypeComboBox;
+    mv::gui::OptionAction _storageTypeComboBox;
     mv::gui::DatasetPickerAction _datasetPickerAction;
-    QCheckBox* _derivedDataCheckBox;
+    mv::gui::ToggleAction _derivedDataCheckBox;
 
 public:
     CsvLoader(const PluginFactory* factory);
     ~CsvLoader(void) override;
 
     void init() override;
-
     void loadData() Q_DECL_OVERRIDE;
-
 };
 
 
