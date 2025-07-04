@@ -237,7 +237,7 @@ void CsvLoader::init()
         };
     auto updateSourceTypeComboBox = [updateDerivedDataCheckbox,this]() {
         updateDerivedDataCheckbox();
-        _mixedDataHierarchyCheckbox.setVisible(_sourceTypeComboBox.getCurrentIndex() == 0);
+        _mixedDataHierarchyCheckbox.setEnabled(_sourceTypeComboBox.getCurrentIndex() == 0);
         };
     // Connect signals to update the checkbox state
 
@@ -261,7 +261,8 @@ void CsvLoader::init()
     const auto onFilterSelected = [this](const QString& nameFilter)
     {
         const bool isTSVSelected{ nameFilter == "TSV (*.tsv)" };
-        _separatorLineEdit.setVisible(!isTSVSelected);
+        _separatorLineEdit.setString(isTSVSelected ? "\t" : ",");
+        _separatorLineEdit.setEnabled(!isTSVSelected);
     };
 
     QObject::connect(&_fileDialog, &QFileDialog::filterSelected, onFilterSelected);
