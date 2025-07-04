@@ -228,8 +228,8 @@ void CsvLoader::init()
     // Lambda to update checkbox state
     auto updateDerivedDataCheckbox = [this]() {
         bool parentDatasetValid = _datasetPickerAction.getCurrentDataset().isValid();
-        bool isNumerical = (_sourceTypeComboBox.getCurrentText() == "Numerical");
-        bool enable = parentDatasetValid && isNumerical;
+        bool isNumericalMixed = (_sourceTypeComboBox.getCurrentText() == "Numerical"|| _sourceTypeComboBox.getCurrentText() == "Mixed (auto-detect)");
+        bool enable = parentDatasetValid && isNumericalMixed;
         _derivedDataCheckBox.setEnabled(enable);
         if (!enable) {
             _derivedDataCheckBox.setChecked(false);
