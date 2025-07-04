@@ -88,17 +88,22 @@ namespace ExtCsvLoader
 		std::iota(target_column_index.begin(), target_column_index.end(), std::ptrdiff_t(0));
 
 		if (parent_labels.empty()) {
+			qInfo() << "No parent_labels provided. Using default column and row headers.";
 			column_header = m_column_header;
 			row_header = m_row_header;
 		}
 		else {
+			qInfo() << "parent_labels provided. Attempting to map labels.";
 			if (transposed) {
+				qDebug() << "Transposed mode enabled.";
 				if (m_with_column_header) {
+					qDebug() << "Column header present. Mapping parent_labels to columns.";
 					create_target_index_vector(m_column_header, parent_labels, target_column_index);
 					column_header = parent_labels;
 					row_header = m_row_header;
 				}
 				else {
+					qWarning() << "No column header present. Attempting identity mapping for columns.";
 					// No column header, so cannot map parent_labels to columns
 					// Identity mapping only if sizes match
 					if (parent_labels.size() == m_nrOfColumns) {
@@ -108,18 +113,23 @@ namespace ExtCsvLoader
 						qDebug() << "No column header: using identity mapping for columns.";
 					}
 					else {
-						qWarning() << "Cannot map parent_labels to columns: no column header and size mismatch.";
+						qCritical() << "Cannot map parent_labels to columns: no column header and size mismatch."
+							<< "parent_labels.size():" << parent_labels.size()
+							<< "m_nrOfColumns:" << m_nrOfColumns;
 						return nullptr;
 					}
 				}
 			}
 			else {
+				qDebug() << "Non-transposed mode enabled.";
 				if (m_with_row_header) {
+					qDebug() << "Row header present. Mapping parent_labels to rows.";
 					create_target_index_vector(m_row_header, parent_labels, target_row_index);
 					row_header = parent_labels;
 					column_header = m_column_header;
 				}
 				else {
+					qWarning() << "No row header present. Attempting identity mapping for rows.";
 					// No row header, so cannot map parent_labels to rows
 					// Identity mapping only if sizes match
 					if (parent_labels.size() == m_nrOfRows) {
@@ -129,12 +139,14 @@ namespace ExtCsvLoader
 						qDebug() << "No row header: using identity mapping for rows.";
 					}
 					else {
-						qWarning() << "Cannot map parent_labels to rows: no row header and size mismatch.";
+						qCritical() << "Cannot map parent_labels to rows: no row header and size mismatch."
+							<< "parent_labels.size():" << parent_labels.size()
+							<< "m_nrOfRows:" << m_nrOfRows;
 						return nullptr;
 					}
 				}
 			}
-			qDebug() << "parent labels matched";
+			qInfo() << "parent_labels mapping completed successfully.";
 		}
 		
 
