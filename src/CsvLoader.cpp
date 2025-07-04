@@ -103,6 +103,7 @@ CsvLoader::CsvLoader(const PluginFactory* factory) : LoaderPlugin(factory)
 , _sourceTypeComboBox(nullptr)
 , _storageTypeComboBox(nullptr)
 , _datasetPickerAction(this, "Parent Dataset")
+, _derivedDataCheckBox(nullptr)
 {
 
 }
@@ -123,6 +124,7 @@ namespace Keys
     const QString sourceValueKey("sourceValue");
     const QString storageValueKey("storageValue");
     const QString transposeValueKey("transposeValue");
+    const QString derivedDataValueKey("derivedData");
 }
 
 void CsvLoader::init()
@@ -141,7 +143,7 @@ void CsvLoader::init()
 
     int rowCount = fileDialogLayout->rowCount();
 
-    QLabel* separatorLabel = new QLabel("Separator");
+    QLabel* separatorLabel = new QLabel("Separator:");
     _separatorLineEdit = new QLineEdit;
     _separatorLineEdit->setMaximumWidth(13);
     _separatorLineEdit->setMaxLength(1);
@@ -152,7 +154,7 @@ void CsvLoader::init()
     fileDialogLayout->addWidget(separatorLabel, rowCount, 0);
     fileDialogLayout->addWidget(_separatorLineEdit, rowCount++, 1);
 
-    QLabel* columnHeaderLabel = new QLabel("Column header");
+    QLabel* columnHeaderLabel = new QLabel("Column header:");
     _columnHeaderCheckBox = new QCheckBox();
     {
         const auto columnHeaderValue = getSetting(Keys::columnHeaderValueKey).toBool();
@@ -161,7 +163,7 @@ void CsvLoader::init()
     fileDialogLayout->addWidget(columnHeaderLabel, rowCount, 0);
     fileDialogLayout->addWidget(_columnHeaderCheckBox, rowCount++, 1);
 
-    QLabel* rowHeaderLabel = new QLabel("Row header");
+    QLabel* rowHeaderLabel = new QLabel("Row header:");
     _rowHeaderCheckBox = new QCheckBox();
     {
         const auto rowHeaderValue = getSetting(Keys::rowHeaderValueKey).toBool();
@@ -170,7 +172,7 @@ void CsvLoader::init()
     fileDialogLayout->addWidget(rowHeaderLabel, rowCount, 0);
     fileDialogLayout->addWidget(_rowHeaderCheckBox, rowCount++, 1);
 
-    QLabel* transposeLabel = new QLabel("Transpose");
+    QLabel* transposeLabel = new QLabel("Transpose:");
     _transposeCheckBox = new QCheckBox();
     {
         const auto transposeValue = getSetting(Keys::transposeValueKey).toBool();
@@ -179,7 +181,7 @@ void CsvLoader::init()
     fileDialogLayout->addWidget(transposeLabel, rowCount, 0);
     fileDialogLayout->addWidget(_transposeCheckBox, rowCount++, 1);
 
-    QLabel* sourceTypeLabel = new QLabel("Source Data");
+    QLabel* sourceTypeLabel = new QLabel("Source Data:");
     _sourceTypeComboBox = new QComboBox;
     _sourceTypeComboBox->addItem("Mixed (auto-detect)", 0);
     _sourceTypeComboBox->addItem("Numerical", 1);
@@ -203,7 +205,7 @@ void CsvLoader::init()
     fileDialogLayout->addWidget(mixedDataHierarchyLabel, rowCount, 0);
     fileDialogLayout->addWidget(_mixedDataHierarchyCheckbox, rowCount++, 1);
 
-    QLabel* storageTypeLabel = new QLabel("Numerical Storage");
+    QLabel* storageTypeLabel = new QLabel("Numerical Storage:");
     _storageTypeComboBox = new QComboBox;
     _storageTypeComboBox->addItem("Float (32-bits)", 1);
     _storageTypeComboBox->addItem("BFloat16 (16-bits)", 2);
@@ -219,8 +221,45 @@ void CsvLoader::init()
     // Assign found dataset(s)
     _datasetPickerAction.setDatasets(dataSets);
 
-    fileDialogLayout->addWidget(_datasetPickerAction.createLabelWidget(&_fileDialog), rowCount, 0);
-    fileDialogLayout->addWidget(_datasetPickerAction.createWidget(&_fileDialog), rowCount, 1);
+    QLabel* datasetPickerLabel = new QLabel("Parent Dataset:");
+    fileDialogLayout->addWidget(datasetPickerLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_datasetPickerAction.createWidget(&_fileDialog), rowCount++, 1);
+
+    QLabel* derivedDataLabel = new QLabel("Derived data:");
+    _derivedDataCheckBox = new QCheckBox();
+    {
+        const auto derivedDataValue = getSetting(Keys::derivedDataValueKey).toBool();
+        _derivedDataCheckBox->setChecked(derivedDataValue);
+    }
+    _derivedDataCheckBox->setEnabled(false);
+    fileDialogLayout->addWidget(derivedDataLabel, rowCount, 0);
+    fileDialogLayout->addWidget(_derivedDataCheckBox, rowCount++, 1);
+
+    // --- Logic to enable/disable the checkbox based on criteria ---
+    auto updateDerivedDataCheckbox = [this]() {
+        // Parent dataset combobox is not empty and has a value
+        bool parentDatasetValid = _datasetPickerAction.getCurrentDataset().isValid();
+        // Source Data combobox value is "Numerical" (index 1)
+        bool isNumerical = (_sourceTypeComboBox->currentIndex() == 1);
+        bool enable = parentDatasetValid && isNumerical;
+        _derivedDataCheckBox->setEnabled(enable);
+        if (!enable) {
+            _derivedDataCheckBox->setChecked(false);
+        }
+    };
+
+    // Connect to changes in Parent Dataset and Source Data combobox
+    QObject::connect(_datasetPickerAction.createWidget(&_fileDialog), &QWidget::destroyed, [this, updateDerivedDataCheckbox](QObject*) {
+        // Defensive: update when widget is destroyed (should not happen in normal use)
+        updateDerivedDataCheckbox();
+    });
+    QObject::connect(_sourceTypeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [updateDerivedDataCheckbox](int) {
+        updateDerivedDataCheckbox();
+    });
+    QObject::connect(_datasetPickerAction.createWidget(&_fileDialog), SIGNAL(currentIndexChanged(int)), this, SLOT(updateDerivedDataCheckbox()));
+
+    // Also update once at init
+    updateDerivedDataCheckbox();
 
     const auto selectedNameFilterSetting = getSetting(Keys::selectedNameFilterKey, QVariant());
     if (selectedNameFilterSetting.isValid())
@@ -269,6 +308,7 @@ void CsvLoader::loadData()
         setSetting(Keys::storageValueKey, _storageTypeComboBox->currentIndex());
         setSetting(Keys::fileNameKey, firstFileName);
         setSetting(Keys::selectedNameFilterKey, selectedNameFilter);
+        setSetting(Keys::derivedDataValueKey, _derivedDataCheckBox->isChecked());
 
         char selected_separator = _separatorLineEdit->text()[0].toLatin1();
         if (selectedNameFilter == "TSV (*.tsv)")

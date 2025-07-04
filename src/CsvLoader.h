@@ -1,7 +1,6 @@
 #pragma once
 
 #include <LoaderPlugin.h>
-
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
@@ -30,6 +29,7 @@ class CsvLoader : public LoaderPlugin
     QComboBox* _sourceTypeComboBox;
     QComboBox* _storageTypeComboBox;
     mv::gui::DatasetPickerAction _datasetPickerAction;
+    QCheckBox* _derivedDataCheckBox;
 
 public:
     CsvLoader(const PluginFactory* factory);
