@@ -9,6 +9,7 @@ PROJECT(${PROJECT})
 # -----------------------------------------------------------------------------
 # CMake Options
 # -----------------------------------------------------------------------------
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
 if(MSVC)
@@ -32,19 +33,23 @@ find_package(ManiVault COMPONENTS Core PointData ClusterData CONFIG QUIET)
 set(SOURCES
     src/CsvLoader.h
     src/CsvLoader.cpp
-    src/CsvLoader.json
     src/csvreader.h
     src/csvreader.cpp
     src/csvbuffer.h
     src/csvbuffer.cpp
 )
 
+set(PLUGININFO
+    PluginInfo.json
+)
+
 source_group( Plugin FILES ${SOURCES})
+source_group( Aux FILES ${PLUGININFO})
 
 # -----------------------------------------------------------------------------
 # CMake Target
 # -----------------------------------------------------------------------------
-add_library(${PROJECT} SHARED ${SOURCES})
+add_library(${PROJECT} SHARED ${SOURCES} ${PLUGININFO})
 
 # -----------------------------------------------------------------------------
 # Target include directories
@@ -87,6 +92,8 @@ add_custom_command(TARGET ${PROJECT} POST_BUILD
 	--config $<CONFIGURATION>
 	--prefix ${ManiVault_INSTALL_DIR}/$<CONFIGURATION>
 )
+
+mv_handle_plugin_config(${PROJECT})
 
 # -----------------------------------------------------------------------------
 # Target installation
