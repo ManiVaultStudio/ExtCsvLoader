@@ -52,7 +52,7 @@ class CsvLoaderFactory : public LoaderPluginFactory
     Q_INTERFACES(mv::plugin::LoaderPluginFactory mv::plugin::PluginFactory)
     Q_OBJECT
     Q_PLUGIN_METADATA(IID   "nl.tudelft.ExtCsvLoader"
-                      FILE  "CsvLoader.json")
+                      FILE  "PluginInfo.json")
 
 public:
     CsvLoaderFactory(void);
