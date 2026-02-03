@@ -4,7 +4,10 @@ cmake_minimum_required(VERSION 3.22)
 # Extended CSV Loader Plugin
 # -----------------------------------------------------------------------------
 set(PROJECT "ExtCsvLoader")
-PROJECT(${PROJECT})
+PROJECT(${PROJECT}
+        DESCRIPTION "A CSV loader plugin for ManiVault"
+        LANGUAGES CXX
+)
 
 # -----------------------------------------------------------------------------
 # CMake Options
