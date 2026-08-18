@@ -4,20 +4,23 @@ cmake_minimum_required(VERSION 3.22)
 # Extended CSV Loader Plugin
 # -----------------------------------------------------------------------------
 set(PROJECT "ExtCsvLoader")
-PROJECT(${PROJECT})
+PROJECT(${PROJECT}
+        DESCRIPTION "A CSV loader plugin for ManiVault"
+        LANGUAGES CXX
+)
 
 # -----------------------------------------------------------------------------
 # CMake Options
 # -----------------------------------------------------------------------------
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
-if(MSVC)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /DWIN32 /EHsc /MP /permissive- /Zc:__cplusplus")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MD")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
-	set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /DEBUG")
-endif(MSVC)
+endif()
 
 # -----------------------------------------------------------------------------
 # Dependencies
@@ -33,19 +36,23 @@ find_package(ManiVault COMPONENTS Core PointData ClusterData CONFIG QUIET)
 set(SOURCES
     src/CsvLoader.h
     src/CsvLoader.cpp
-    src/CsvLoader.json
     src/csvreader.h
     src/csvreader.cpp
     src/csvbuffer.h
     src/csvbuffer.cpp
 )
 
+set(PLUGININFO
+    PluginInfo.json
+)
+
 source_group( Plugin FILES ${SOURCES})
+source_group( Aux FILES ${PLUGININFO})
 
 # -----------------------------------------------------------------------------
 # CMake Target
 # -----------------------------------------------------------------------------
-add_library(${PROJECT} SHARED ${SOURCES})
+add_library(${PROJECT} SHARED ${SOURCES} ${PLUGININFO})
 
 # -----------------------------------------------------------------------------
 # Target include directories
@@ -89,11 +96,13 @@ add_custom_command(TARGET ${PROJECT} POST_BUILD
 	--prefix ${ManiVault_INSTALL_DIR}/$<CONFIGURATION>
 )
 
+mv_handle_plugin_config(${PROJECT})
+
 # -----------------------------------------------------------------------------
 # Target installation
 # -----------------------------------------------------------------------------
 # Automatically set the debug environment (command + working directory) for MSVC
-if(MSVC)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set_property(TARGET ${PROJECT} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY $<IF:$<CONFIG:DEBUG>,${ManiVault_INSTALL_DIR}/Debug,$<IF:$<CONFIG:RELWITHDEBINFO>,${ManiVault_INSTALL_DIR}/RelWithDebInfo,${ManiVault_INSTALL_DIR}/Release>>)
     set_property(TARGET ${PROJECT} PROPERTY VS_DEBUGGER_COMMAND $<IF:$<CONFIG:DEBUG>,"${ManiVault_INSTALL_DIR}/Debug/ManiVault Studio.exe",$<IF:$<CONFIG:RELWITHDEBINFO>,"${ManiVault_INSTALL_DIR}/RelWithDebInfo/ManiVault Studio.exe","${ManiVault_INSTALL_DIR}/Release/ManiVault Studio.exe">>)
 endif()
